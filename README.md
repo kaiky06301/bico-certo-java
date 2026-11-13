@@ -554,12 +554,13 @@ O app em React Native (disciplina de Mobile) consome esta API:
 
 ## 14. Declaração de uso de IA generativa
 
-Conforme as regras da Global Solution:
+Conforme as regras da Global Solution, o grupo declara que usou ferramentas de IA generativa **apenas como apoio**:
 
-| Ferramenta | Para quê |
+| Uso | Para quê |
 |---|---|
-| `FERRAMENTA_1` | Apoio na pesquisa de bibliotecas e na explicação de erros de compilação e configuração |
-| `FERRAMENTA_2` | Revisão de texto da documentação |
+| Pesquisa | Consultar documentação e exemplos de bibliotecas (Spring Security, Spring AI, Spring AMQP) |
+| Explicação de erros | Entender mensagens de erro de compilação e de configuração durante o desenvolvimento |
+| Revisão de texto | Revisar a escrita e a formatação da documentação |
 
 Todo o código foi revisado, testado e entendido pelo grupo antes da entrega. **No produto**, a IA generativa é usada na **triagem das solicitações** (seção 6), com um modelo local (Ollama) e guardrails que validam cada resposta.
 
