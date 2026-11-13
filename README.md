@@ -569,8 +569,8 @@ Todo o código foi revisado, testado e entendido pelo grupo antes da entrega. **
 
 | Nome | RM | Turma |
 |---|---|---|
-| `NOME_1` | `RM_1` | `TURMA` |
-| `NOME_2` | `RM_2` | `TURMA` |
-| `NOME_3` | `RM_3` | `TURMA` |
-| `NOME_4` | `RM_4` | `TURMA` |
-| `NOME_5` | `RM_5` | `TURMA` |
+| Erick Bernardes Bradaschia | RM565733 | 2TDSR |
+| Gabriel Santos Claudino | RM564054 | 2TDSR |
+| Kaiky de Oliveira Silva | RM566067 | 2TDSR |
+| Lucas Fortes de Lima | RM559523 | 2TDSR |
+| Jonathan Moreira Gomes | RM565060 | 2TDSR |
