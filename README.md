@@ -437,7 +437,7 @@ Todos usam `Authorization: Bearer <token>`, exceto login e cadastro. As listagen
 | POST | `/auth/registrar` | público | Cadastro de CLIENTE ou PRESTADOR |
 | POST | `/auth/login` | público | Devolve o JWT |
 | GET | `/auth/me` | logado | Dados do usuário logado |
-| GET | `/api/categorias` | logado | Lista categorias (paginado) |
+| GET | `/api/categorias` | público | Lista categorias (paginado) |
 | POST / PUT / DELETE | `/api/categorias/{id}` | ADMIN | CRUD da tabela de referência |
 | POST | `/api/solicitacoes/triagem` | CLIENTE | Prévia da triagem com IA |
 | POST | `/api/solicitacoes` | CLIENTE | Cria o pedido (IA + evento RabbitMQ) |
@@ -500,7 +500,7 @@ curl -X PATCH http://localhost:8080/api/solicitacoes/1/assumir -H "Authorization
 
 ## 11. Testes (JUnit + Postman)
 
-### Automatizados (JUnit 5, 18 testes)
+### Automatizados (JUnit 5, 19 testes)
 
 ```bash
 ./mvnw test
@@ -511,17 +511,17 @@ Os testes rodam em **H2**, com as **mesmas migrations do Flyway**. O modelo de I
 |---|---|
 | `TriagemServiceTest` (9) | Normalização da resposta da IA, guardrails de categoria e urgência, cálculo do preço justo e triagem por regras |
 | `PrestadorTest` (1) | Cálculo da nota média |
-| `FluxoSolicitacaoIntegracaoTest` (8) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade e IA fora do ar |
+| `FluxoSolicitacaoIntegracaoTest` (9) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade e IA fora do ar |
 
 ### Postman
 
-A coleção `postman/Bico-Certo-API.postman_collection.json` tem **33 requisições com 45 asserções** e roda em ordem com o Runner. Os tokens são salvos automaticamente em variáveis. Também pode ser rodada pelo terminal, com a API no ar:
+A coleção `postman/Bico-Certo-API.postman_collection.json` tem **34 requisições** e roda em ordem com o Runner. Os tokens são salvos automaticamente em variáveis. Também pode ser rodada pelo terminal, com a API no ar:
 
 ```bash
 npx newman run postman/Bico-Certo-API.postman_collection.json --delay-request 300
 ```
 
-Resultado da última execução: **33 requisições, 45 asserções, 0 falhas**.
+Todas as requisições têm asserções automáticas de status e de conteúdo.
 
 ---
 
