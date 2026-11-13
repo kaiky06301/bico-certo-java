@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Repositório** | `LINK_DO_REPOSITORIO` |
+| **Repositório** | https://github.com/kaiky06301/bico-certo-java |
 | **Vídeo pitch (até 5 min)** | `LINK_DO_VIDEO` |
 | **Swagger (local)** | http://localhost:8080/swagger-ui.html |
 | **Deploy** | Não há deploy desta API (roda localmente com Docker e Ollama) |
@@ -380,7 +380,7 @@ sequenceDiagram
 
 ```bash
 # 1. Clonar o repositorio
-git clone LINK_DO_REPOSITORIO
+git clone https://github.com/kaiky06301/bico-certo-java.git
 cd bico-certo-java
 
 # 2. Criar o arquivo de variaveis de ambiente (o .env nao vai para o Git)
