@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres-bicocerto
+    environment:
+      POSTGRES_DB: bicocerto
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5435:5432"
+    volumes:
+      - pgdata-bicocerto:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq-bicocerto
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+volumes:
+  pgdata-bicocerto:
