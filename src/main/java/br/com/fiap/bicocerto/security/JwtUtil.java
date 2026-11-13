@@ -32,6 +32,7 @@ public class JwtUtil {
         return Jwts.builder()
                 .setSubject(usuario.getUsername())
                 .claim("uid", usuario.getId())
+                .claim("nome", usuario.getNome())
                 .claim("papel", usuario.getPapel().name())
                 .setIssuer("bico-certo-api")
                 .setIssuedAt(agora)

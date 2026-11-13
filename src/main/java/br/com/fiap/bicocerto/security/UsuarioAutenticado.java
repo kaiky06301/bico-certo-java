@@ -13,18 +13,21 @@ import java.util.List;
 public class UsuarioAutenticado implements UserDetails {
 
     private final Long id;
+    private final String nome;
     private final String email;
     private final String senha;
     private final Papel papel;
 
     public UsuarioAutenticado(Usuario usuario) {
         this.id = usuario.getId();
+        this.nome = usuario.getNome();
         this.email = usuario.getEmail();
         this.senha = usuario.getSenha();
         this.papel = usuario.getPapel();
     }
 
     public Long getId() { return id; }
+    public String getNome() { return nome; }
     public Papel getPapel() { return papel; }
 
     @Override
