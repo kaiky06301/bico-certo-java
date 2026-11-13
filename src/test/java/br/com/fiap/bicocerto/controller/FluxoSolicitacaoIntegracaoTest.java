@@ -93,9 +93,16 @@ class FluxoSolicitacaoIntegracaoTest {
 
     @Test
     void endpointProtegidoSemTokenRetorna401() throws Exception {
-        mockMvc.perform(get("/api/categorias"))
+        mockMvc.perform(get("/api/solicitacoes/minhas"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.mensagem").value("Token ausente, invalido ou expirado"));
+    }
+
+    @Test
+    void categoriasSaoPublicasParaOCadastroDoPrestador() throws Exception {
+        mockMvc.perform(get("/api/categorias"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(6));
     }
 
     @Test

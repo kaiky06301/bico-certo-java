@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/categorias")
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Categorias", description = "Tabela de referencia de servicos e precos (escrita apenas ADMIN)")
+@Tag(name = "Categorias", description = "Tabela de referencia de servicos e precos (leitura publica, escrita apenas ADMIN)")
 public class CategoriaController {
 
     private final CategoriaService categoriaService;

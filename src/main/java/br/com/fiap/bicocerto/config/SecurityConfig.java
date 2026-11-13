@@ -62,6 +62,8 @@ public class SecurityConfig {
                         .requestMatchers("/auth/login", "/auth/registrar").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // tabela de servicos e precos de referencia e publica (usada no cadastro do prestador)
+                        .requestMatchers(HttpMethod.GET, "/api/categorias", "/api/categorias/**").permitAll()
                         // regras por papel (as regras finas ficam com @PreAuthorize nos controllers)
                         .requestMatchers(HttpMethod.POST, "/api/categorias/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/categorias/**").hasRole("ADMIN")
