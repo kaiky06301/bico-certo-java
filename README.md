@@ -568,6 +568,8 @@ Todo o código foi revisado, testado e entendido pelo grupo antes da entrega. **
 
 ## 15. Integrantes
 
+**Grupo:** Bico Certo Labs
+
 | Nome | RM | Turma |
 |---|---|---|
 | Erick Bernardes Bradaschia | RM565733 | 2TDSR |
