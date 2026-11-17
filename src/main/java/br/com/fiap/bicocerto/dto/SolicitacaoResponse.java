@@ -13,6 +13,7 @@ public record SolicitacaoResponse(
         String observacao,
         int quantidadeFotos,
         StatusSolicitacao status,
+        String motivoCancelamento,
         Urgencia urgencia,
         TriagemResponse.CategoriaResumo categoria,
         BigDecimal precoMinimo,
@@ -52,7 +53,7 @@ public record SolicitacaoResponse(
         }
         String endereco = dono || contatoLiberado ? s.getEndereco() : null;
         return new SolicitacaoResponse(s.getId(), s.getDescricao(), s.getBairro(), endereco,
-                s.getObservacao(), s.getQuantidadeFotos(), s.getStatus(), s.getUrgencia(),
+                s.getObservacao(), s.getQuantidadeFotos(), s.getStatus(), s.getMotivoCancelamento(), s.getUrgencia(),
                 new TriagemResponse.CategoriaResumo(s.getCategoria().getId(), s.getCategoria().getNome()),
                 s.getPrecoMinimo(), s.getPrecoMaximo(), s.getResumoTriagem(), s.getDicaSeguranca(),
                 s.getOrigemTriagem(), cliente, prestador, s.getCriadaEm(), s.getAtualizadaEm());

@@ -158,12 +158,13 @@ public class SolicitacaoService {
 
     /** Exclusao logica: o pedido fica no historico como CANCELADA. */
     @Transactional
-    public void cancelar(Long id, Long clienteId) {
+    public void cancelar(Long id, Long clienteId, String motivo) {
         Solicitacao solicitacao = obterDoCliente(id, clienteId);
         if (!EnumSet.of(StatusSolicitacao.ABERTA, StatusSolicitacao.EM_ATENDIMENTO).contains(solicitacao.getStatus())) {
             throw new RegraNegocioException("Pedido " + solicitacao.getStatus() + " nao pode ser cancelado");
         }
         solicitacao.setStatus(StatusSolicitacao.CANCELADA);
+        solicitacao.setMotivoCancelamento(vazioParaNulo(motivo));
         eventoProducer.publicarAposCommit(evento(TipoEvento.CANCELADA, solicitacao));
     }
 

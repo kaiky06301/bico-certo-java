@@ -40,6 +40,16 @@ public class GlobalExceptionHandler {
         return resposta(HttpStatus.BAD_REQUEST, "JSON invalido ou com valor nao permitido", request);
     }
 
+    /** Validacao de @RequestParam/@PathVariable (ex.: motivo do cancelamento muito longo). */
+    @ExceptionHandler(org.springframework.web.method.annotation.HandlerMethodValidationException.class)
+    public ResponseEntity<ErroResponse> parametroInvalido(
+            org.springframework.web.method.annotation.HandlerMethodValidationException ex, HttpServletRequest request) {
+        String mensagem = ex.getAllErrors().stream().findFirst()
+                .map(org.springframework.context.MessageSourceResolvable::getDefaultMessage)
+                .orElse("Parametro invalido");
+        return resposta(HttpStatus.BAD_REQUEST, mensagem, request);
+    }
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErroResponse> parametroInvalido(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
         return resposta(HttpStatus.BAD_REQUEST, "Parametro '" + ex.getName() + "' com valor invalido", request);

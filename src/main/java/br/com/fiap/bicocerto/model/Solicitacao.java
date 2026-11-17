@@ -35,6 +35,9 @@ public class Solicitacao {
     @Column(length = 300)
     private String endereco;
 
+    @Column(name = "motivo_cancelamento", length = 200)
+    private String motivoCancelamento;
+
     /** Informacao adicional opcional do morador. */
     @Column(length = 500)
     private String observacao;
@@ -115,6 +118,8 @@ public class Solicitacao {
     public void setBairro(String bairro) { this.bairro = bairro; }
     public String getEndereco() { return endereco; }
     public void setEndereco(String endereco) { this.endereco = endereco; }
+    public String getMotivoCancelamento() { return motivoCancelamento; }
+    public void setMotivoCancelamento(String motivoCancelamento) { this.motivoCancelamento = motivoCancelamento; }
     public String getObservacao() { return observacao; }
     public void setObservacao(String observacao) { this.observacao = observacao; }
     public int getQuantidadeFotos() { return quantidadeFotos; }

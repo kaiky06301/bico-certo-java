@@ -62,7 +62,7 @@ class ContaIntegracaoTest {
         String hash = passwordEncoder.encode(SENHA);
         usuarioRepository.save(new Usuario("Maria Teste", "maria@teste.com", hash, "(11) 90000-0001", "Capao Redondo", Papel.CLIENTE));
         usuarioRepository.save(new Usuario("Admin Teste", "admin@teste.com", hash, null, "Centro", Papel.ADMIN));
-        var eletrica = categoriaRepository.findAll().stream().filter(c -> c.getNome().equals("Eletrica")).findFirst().orElseThrow();
+        var eletrica = categoriaRepository.findAll().stream().filter(c -> c.getNome().equals("Elétrica")).findFirst().orElseThrow();
         Usuario joao = usuarioRepository.save(new Usuario("Joao", "joao@teste.com", hash, "(11) 90000-0002", "Capao Redondo", Papel.PRESTADOR));
         prestadorUsuarioId = joao.getId();
         prestadorId = prestadorRepository.save(new Prestador(joao, eletrica, "Eletricista")).getId();
@@ -202,7 +202,7 @@ class ContaIntegracaoTest {
     @Test
     void prestadorCompletaOPerfilProfissionalEClienteVePeloIdDoUsuario() throws Exception {
         String joao = token("joao@teste.com", SENHA);
-        var categoria = categoriaRepository.findAll().stream().filter(c -> c.getNome().equals("Eletrica")).findFirst().orElseThrow();
+        var categoria = categoriaRepository.findAll().stream().filter(c -> c.getNome().equals("Elétrica")).findFirst().orElseThrow();
 
         mockMvc.perform(put("/api/prestadores/me").header("Authorization", joao).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoriaId\":" + categoria.getId() + ",\"descricao\":\"12 anos de experiencia\","

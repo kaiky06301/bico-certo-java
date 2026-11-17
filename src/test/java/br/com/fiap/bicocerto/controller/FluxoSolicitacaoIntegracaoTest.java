@@ -71,7 +71,7 @@ class FluxoSolicitacaoIntegracaoTest {
         String hash = passwordEncoder.encode(SENHA);
         usuarioRepository.save(new Usuario("Cliente Teste", "cliente@teste.com", hash, "(11) 90000-0001", "Capao Redondo", Papel.CLIENTE));
         usuarioRepository.save(new Usuario("Admin Teste", "admin@teste.com", hash, null, "Centro", Papel.ADMIN));
-        var eletrica = categoriaRepository.findAll().stream().filter(c -> c.getNome().equals("Eletrica")).findFirst().orElseThrow();
+        var eletrica = categoriaRepository.findAll().stream().filter(c -> c.getNome().equals("Elétrica")).findFirst().orElseThrow();
         var encanamento = categoriaRepository.findAll().stream().filter(c -> c.getNome().equals("Encanamento")).findFirst().orElseThrow();
         Usuario joao = usuarioRepository.save(new Usuario("Joao", "eletricista@teste.com", hash, "(11) 90000-0002", "Capao Redondo", Papel.PRESTADOR));
         prestadorRepository.save(new Prestador(joao, eletrica, "Eletricista"));
@@ -80,7 +80,7 @@ class FluxoSolicitacaoIntegracaoTest {
 
         when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
         responderModelo("""
-                {"categoria":"Eletrica","urgencia":"MEDIA","complexidade":"SIMPLES",
+                {"categoria":"Elétrica","urgencia":"MEDIA","complexidade":"SIMPLES",
                  "resumo":"Tomada da sala sem energia","dicaSeguranca":"Desligue o disjuntor da sala."}""");
     }
 
@@ -147,7 +147,7 @@ class FluxoSolicitacaoIntegracaoTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"descricao\":\"A tomada da sala parou de funcionar\"}"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.categoria.nome").value("Eletrica"))
+                .andExpect(jsonPath("$.categoria.nome").value("Elétrica"))
                 .andExpect(jsonPath("$.status").value("ABERTA"))
                 .andExpect(jsonPath("$.precoMinimo").value(80.0))
                 .andExpect(jsonPath("$.precoMaximo").value(190.0))
@@ -182,7 +182,7 @@ class FluxoSolicitacaoIntegracaoTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"nota\":4,\"comentario\":\"Bom servico\"}"))
                 .andExpect(status().isCreated());
         mockMvc.perform(get("/api/prestadores?categoriaId={c}", categoriaRepository.findAll().stream()
-                        .filter(c -> c.getNome().equals("Eletrica")).findFirst().orElseThrow().getId())
+                        .filter(c -> c.getNome().equals("Elétrica")).findFirst().orElseThrow().getId())
                         .header("Authorization", cliente))
                 .andExpect(jsonPath("$.conteudo[0].notaMedia").value(4.0))
                 .andExpect(jsonPath("$.conteudo[0].totalAvaliacoes").value(1));
@@ -280,6 +280,26 @@ class FluxoSolicitacaoIntegracaoTest {
                                 + "\"observacao\":\"O cano da pia estourou e esta vazando\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.categoria.nome").value("Encanamento"));
+    }
+
+    @Test
+    void cancelamentoGuardaOMotivo() throws Exception {
+        String cliente = token("cliente@teste.com");
+        String resposta = mockMvc.perform(post("/api/solicitacoes").header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"descricao\":\"A tomada da sala parou de funcionar\"}"))
+                .andReturn().getResponse().getContentAsString();
+        long id = jsonMapper.readTree(resposta).get("id").asLong();
+
+        mockMvc.perform(delete("/api/solicitacoes/{id}", id).header("Authorization", cliente)
+                        .param("motivo", "x".repeat(201)))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(delete("/api/solicitacoes/{id}", id).header("Authorization", cliente)
+                        .param("motivo", "Resolvi de outra forma"))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/solicitacoes/{id}", id).header("Authorization", cliente))
+                .andExpect(jsonPath("$.status").value("CANCELADA"))
+                .andExpect(jsonPath("$.motivoCancelamento").value("Resolvi de outra forma"));
     }
 
     private void responderModelo(String json) {

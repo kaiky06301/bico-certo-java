@@ -59,22 +59,25 @@ public class DataLoader implements CommandLineRunner {
         usuarioRepository.save(new Usuario("Administrador Bico Certo", "admin@bicocerto.com.br", senha,
                 "(11) 90000-0000", "Centro", Papel.ADMIN));
         usuarioRepository.save(new Usuario("Maria Souza", "maria@bicocerto.com.br", senha,
-                "(11) 91111-1111", "Capao Redondo", Papel.CLIENTE));
+                "(11) 91111-1111", "Capão Redondo", Papel.CLIENTE));
         usuarioRepository.save(new Usuario("Pedro Lima", "pedro@bicocerto.com.br", senha,
-                "(11) 92222-2222", "Jardim Angela", Papel.CLIENTE));
+                "(11) 92222-2222", "Jardim Ângela", Papel.CLIENTE));
 
         List<Categoria> categorias = categoriaRepository.findAll();
-        criarPrestador("Joao Eletricista", "joao@bicocerto.com.br", senha, "Capao Redondo",
-                categoria(categorias, "Eletrica"), "Eletricista ha 12 anos, atendo emergencias no mesmo dia.",
-                "Capao Redondo e bairros proximos", "Segunda a sabado, das 8h as 18h", true);
-        criarPrestador("Carlos Encanador", "carlos@bicocerto.com.br", senha, "Capao Redondo",
+        criarPrestador("João Eletricista", "joao@bicocerto.com.br", senha, "Capão Redondo",
+                categoria(categorias, "Elétrica"), "Eletricista há 12 anos, atendo emergências no mesmo dia.",
+                "Capão Redondo e bairros próximos", "Segunda a sábado, das 8h às 18h", true);
+        criarPrestador("Roberto Alves", "roberto@bicocerto.com.br", senha, "Capão Redondo",
+                categoria(categorias, "Elétrica"), "Eletricista residencial, trabalho com garantia de 90 dias.",
+                "Capão Redondo e Campo Limpo", "Segunda a sexta, das 9h às 18h", false);
+        criarPrestador("Carlos Encanador", "carlos@bicocerto.com.br", senha, "Capão Redondo",
                 categoria(categorias, "Encanamento"), "Conserto vazamentos, desentupo pias e troco registros.",
-                "Capao Redondo e bairros proximos", "Segunda a sabado, das 8h as 18h", true);
-        criarPrestador("Ana Diarista", "ana@bicocerto.com.br", senha, "Jardim Angela",
-                categoria(categorias, "Limpeza"), "Faxina completa e pos-obra com material proprio.",
-                "Jardim Angela e Capao Redondo", "Segunda a sexta, das 7h as 17h", false);
+                "Capão Redondo e bairros próximos", "Segunda a sábado, das 8h às 18h", true);
+        criarPrestador("Ana Diarista", "ana@bicocerto.com.br", senha, "Jardim Ângela",
+                categoria(categorias, "Limpeza"), "Faxina completa e pós-obra com material próprio.",
+                "Jardim Ângela e Capão Redondo", "Segunda a sexta, das 7h às 17h", false);
 
-        log.info("Usuarios de teste criados (admin, maria, pedro, joao, carlos, ana)");
+        log.info("Usuarios de teste criados (admin, maria, pedro, joao, roberto, carlos, ana)");
     }
 
     private void criarPrestador(String nome, String email, String senha, String bairro, Categoria categoria,

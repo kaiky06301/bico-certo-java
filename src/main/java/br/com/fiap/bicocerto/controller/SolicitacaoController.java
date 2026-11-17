@@ -105,9 +105,12 @@ public class SolicitacaoController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('CLIENTE')")
-    @Operation(summary = "Cancela o pedido (exclusao logica: status CANCELADA)")
-    public ResponseEntity<Void> cancelar(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado usuario) {
-        solicitacaoService.cancelar(id, usuario.getId());
+    @Operation(summary = "Cancela o pedido (exclusao logica: status CANCELADA), com motivo opcional")
+    public ResponseEntity<Void> cancelar(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado usuario,
+                                         @RequestParam(required = false)
+                                         @jakarta.validation.constraints.Size(max = 200, message = "O motivo deve ter ate 200 caracteres")
+                                         String motivo) {
+        solicitacaoService.cancelar(id, usuario.getId(), motivo);
         return ResponseEntity.noContent().build();
     }
 

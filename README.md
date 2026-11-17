@@ -269,6 +269,7 @@ erDiagram
         varchar bairro
         varchar endereco "rua do servico"
         varchar observacao "informacao adicional"
+        varchar motivo_cancelamento
         varchar urgencia
         numeric preco_minimo
         numeric preco_maximo
@@ -297,7 +298,7 @@ erDiagram
     }
 ```
 
-As migrations ficam em `src/main/resources/db/migration`: a `V1__Create_tables.sql` cria as tabelas e a `V2__Insert_categorias.sql` carrega a **tabela de referência de preços**. A `V3__Perfil_e_conta.sql` acrescenta o perfil profissional e a exclusão de conta, a `V4__Enderecos.sql` cria os endereços salvos e a `V5__Fotos_e_observacao.sql` acrescenta a informação adicional e as fotos do problema.
+As migrations ficam em `src/main/resources/db/migration`: a `V1__Create_tables.sql` cria as tabelas e a `V2__Insert_categorias.sql` carrega a **tabela de referência de preços**. A `V3__Perfil_e_conta.sql` acrescenta o perfil profissional e a exclusão de conta, a `V4__Enderecos.sql` cria os endereços salvos a `V5__Fotos_e_observacao.sql` acrescenta a informação adicional e as fotos do problema, e a `V6__Cancelamento_e_acentos.sql` guarda o motivo do cancelamento e acentua os dados de exemplo.
 
 ---
 
@@ -459,6 +460,7 @@ São criados automaticamente na primeira execução, com a senha definida em `SE
 | CLIENTE | `maria@bicocerto.com.br` | Capão Redondo | |
 | CLIENTE | `pedro@bicocerto.com.br` | Jardim Ângela | |
 | PRESTADOR | `joao@bicocerto.com.br` | Capão Redondo | Elétrica |
+| PRESTADOR | `roberto@bicocerto.com.br` | Capão Redondo | Elétrica (segundo eletricista, para comparar orçamentos) |
 | PRESTADOR | `carlos@bicocerto.com.br` | Capão Redondo | Encanamento |
 | PRESTADOR | `ana@bicocerto.com.br` | Jardim Ângela | Limpeza |
 
@@ -479,7 +481,7 @@ Todos usam `Authorization: Bearer <token>`, exceto login e cadastro. As listagen
 | POST | `/api/solicitacoes` | CLIENTE | Cria o pedido (IA + evento RabbitMQ) |
 | GET | `/api/solicitacoes/minhas` | CLIENTE | Pedidos do cliente |
 | PUT | `/api/solicitacoes/{id}` | CLIENTE | Edita um pedido ABERTO (refaz a triagem) |
-| DELETE | `/api/solicitacoes/{id}` | CLIENTE | Cancela o pedido (exclusão lógica) |
+| DELETE | `/api/solicitacoes/{id}?motivo=` | CLIENTE | Cancela o pedido (exclusão lógica), com motivo opcional que aparece no detalhe e no histórico |
 | POST | `/api/solicitacoes/{id}/avaliacao` | CLIENTE | Avalia o prestador (1 a 5) |
 | GET | `/api/solicitacoes/abertas` | PRESTADOR | Pedidos abertos da sua categoria |
 | GET | `/api/solicitacoes/atendimentos` | PRESTADOR | Pedidos que assumiu |
@@ -547,7 +549,7 @@ curl -X PATCH http://localhost:8080/api/solicitacoes/1/assumir -H "Authorization
 
 ## 11. Testes (JUnit + Postman)
 
-### Automatizados (JUnit 5, 28 testes)
+### Automatizados (JUnit 5, 29 testes)
 
 ```bash
 ./mvnw test
@@ -559,7 +561,7 @@ Os testes rodam em **H2**, com as **mesmas migrations do Flyway**. O modelo de I
 | `TriagemServiceTest` (9) | Normalização da resposta da IA, guardrails de categoria e urgência, cálculo do preço justo e triagem por regras |
 | `PrestadorTest` (1) | Cálculo da nota média |
 | `ContaIntegracaoTest` (6) | Endereços (principal automático, troca de principal, validação, endereço de outro usuário 404, exclusão promovendo o próximo), pedido em outro endereço com a rua escondida do prestador até a contratação, ver e editar os próprios dados (400 na validação), troca de senha exigindo a atual, exclusão com senha que bloqueia login e token antigo, perfil profissional e perfil público pelo id do usuário, selo de verificado só pelo ADMIN |
-| `FluxoSolicitacaoIntegracaoTest` (12) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade, IA fora do ar, fotos e observação (quem pode ver, limite de 3, formato inválido, editar mantendo ou removendo fotos) e observação usada na triagem |
+| `FluxoSolicitacaoIntegracaoTest` (13) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade, IA fora do ar, fotos e observação (quem pode ver, limite de 3, formato inválido, editar mantendo ou removendo fotos) observação usada na triagem e motivo do cancelamento (400 acima de 200 caracteres) |
 
 ### Postman
 
