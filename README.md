@@ -146,7 +146,35 @@ classDiagram
         boolean verificado
         BigDecimal notaMedia
         int totalAvaliacoes
+        int servicosConcluidos
+        String foto
+        Integer anosExperiencia
+        String especialidades
+        String diferenciais
+        String diasAtendimento
+        String horarioInicio
+        String horarioFim
+        boolean atendeEmergencia
+        int quantidadeFotos
         registrarAvaliacao(nota)
+        atende(categoriaId)
+    }
+    class PrestadorFoto {
+        Long id
+        String imagem
+        String legenda
+    }
+    class SolicitacaoFoto {
+        Long id
+        int ordem
+        String imagem
+    }
+    class Endereco {
+        Long id
+        String apelido
+        String logradouro
+        String bairro
+        boolean principal
     }
     class Solicitacao {
         Long id
@@ -185,7 +213,11 @@ classDiagram
     }
 
     Usuario "1" -- "0..1" Prestador : perfil
-    Categoria "1" -- "*" Prestador : atende
+    Categoria "1" -- "*" Prestador : servico principal
+    Prestador "*" -- "*" Categoria : faz tambem (prestador_categorias)
+    Prestador "1" -- "*" PrestadorFoto : galeria
+    Solicitacao "1" -- "*" SolicitacaoFoto : fotos do problema
+    Usuario "1" -- "*" Endereco : enderecos salvos
     Usuario "1" -- "*" Solicitacao : cliente
     Categoria "1" -- "*" Solicitacao : classificada em
     Prestador "0..1" -- "*" Solicitacao : atende
@@ -213,6 +245,20 @@ erDiagram
 
     USUARIOS ||--o{ ENDERECOS : "salva"
     SOLICITACOES ||--o{ SOLICITACAO_FOTOS : "ate 3 fotos"
+    PRESTADORES ||--o{ PRESTADOR_CATEGORIAS : "faz"
+    CATEGORIAS ||--o{ PRESTADOR_CATEGORIAS : "feita por"
+    PRESTADORES ||--o{ PRESTADOR_FOTOS : "galeria (ate 6)"
+    PRESTADOR_CATEGORIAS {
+        bigint prestador_id PK, FK
+        bigint categoria_id PK, FK
+    }
+    PRESTADOR_FOTOS {
+        bigint id PK
+        bigint prestador_id FK
+        text imagem
+        varchar legenda
+        timestamp criada_em
+    }
     SOLICITACAO_FOTOS {
         bigint id PK
         bigint solicitacao_id FK
@@ -260,6 +306,16 @@ erDiagram
         boolean verificado
         numeric nota_media
         int total_avaliacoes
+        int servicos_concluidos
+        text foto
+        int anos_experiencia
+        varchar especialidades
+        varchar diferenciais
+        varchar dias_atendimento
+        varchar horario_inicio
+        varchar horario_fim
+        boolean atende_emergencia
+        int quantidade_fotos
     }
     SOLICITACOES {
         bigint id PK
@@ -278,6 +334,7 @@ erDiagram
         varchar dica_seguranca
         varchar origem_triagem
         varchar status
+        int quantidade_fotos
         timestamp criada_em
         timestamp atualizada_em
     }
@@ -299,7 +356,7 @@ erDiagram
     }
 ```
 
-As migrations ficam em `src/main/resources/db/migration`: a `V1__Create_tables.sql` cria as tabelas e a `V2__Insert_categorias.sql` carrega a **tabela de referência de preços**. A `V3__Perfil_e_conta.sql` acrescenta o perfil profissional e a exclusão de conta, a `V4__Enderecos.sql` cria os endereços salvos a `V5__Fotos_e_observacao.sql` acrescenta a informação adicional e as fotos do problema, a `V6__Cancelamento_e_acentos.sql` guarda o motivo do cancelamento e acentua os dados de exemplo, a `V7__Tipos_de_aviso.sql` dá tipo, valor e orçamento aos avisos a `V8__Acentos_dos_avisos.sql` corrige o texto dos avisos antigos e a `V9__Perfil_profissional_completo.sql` completa o perfil do prestador (foto, experiência, outros serviços, dias e horários de atendimento, emergências e galeria de trabalhos) e a `V10__Novas_categorias.sql` acrescenta Pedreiro, Marceneiro e Mecânico.
+As migrations ficam em `src/main/resources/db/migration`: a `V1__Create_tables.sql` cria as tabelas e a `V2__Insert_categorias.sql` carrega a **tabela de referência de preços**. A `V3__Perfil_e_conta.sql` acrescenta o perfil profissional e a exclusão de conta, a `V4__Enderecos.sql` cria os endereços salvos a `V5__Fotos_e_observacao.sql` acrescenta a informação adicional e as fotos do problema, a `V6__Cancelamento_e_acentos.sql` guarda o motivo do cancelamento e acentua os dados de exemplo, a `V7__Tipos_de_aviso.sql` dá tipo, valor e orçamento aos avisos a `V8__Acentos_dos_avisos.sql` corrige o texto dos avisos antigos e a `V9__Perfil_profissional_completo.sql` completa o perfil do prestador (foto, experiência, outros serviços, dias e horários de atendimento, emergências e galeria de trabalhos) a `V10__Novas_categorias.sql` acrescenta Pedreiro, Marceneiro e Mecânico e a `V11__Contadores_e_servicos.sql` guarda os contadores (serviços feitos, fotos) na própria tabela e coloca o serviço principal na lista de serviços do prestador.
 
 ---
 

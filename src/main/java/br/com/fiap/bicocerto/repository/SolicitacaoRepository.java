@@ -7,23 +7,19 @@ import org.springframework.data.domain.Pageable;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface SolicitacaoRepository extends JpaRepository<Solicitacao, Long> {
 
     Page<Solicitacao> findByClienteId(Long clienteId, Pageable pageable);
 
+    List<Solicitacao> findByClienteId(Long clienteId);
+
     boolean existsByClienteIdAndStatusIn(Long clienteId, java.util.Collection<StatusSolicitacao> status);
 
     boolean existsByPrestadorIdAndStatus(Long prestadorId, StatusSolicitacao status);
-
-    /** Exclusao de conta (LGPD): os pedidos ficam no historico, mas sem a rua do cliente. */
-    @org.springframework.data.jpa.repository.Modifying
-    @org.springframework.data.jpa.repository.Query("update Solicitacao s set s.endereco = null where s.cliente.id = :clienteId")
-    void limparEnderecosDoCliente(@org.springframework.data.repository.query.Param("clienteId") Long clienteId);
 
     Page<Solicitacao> findByCategoriaIdInAndStatus(java.util.Collection<Long> categoriaIds, StatusSolicitacao status, Pageable pageable);
 
@@ -35,6 +31,5 @@ public interface SolicitacaoRepository extends JpaRepository<Solicitacao, Long> 
 
     /** Trava a linha ao assumir/concluir: evita dois prestadores assumindo o mesmo pedido ao mesmo tempo. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT s FROM Solicitacao s WHERE s.id = :id")
-    Optional<Solicitacao> buscarParaAtualizar(@Param("id") Long id);
+    Optional<Solicitacao> findParaAtualizarById(Long id);
 }

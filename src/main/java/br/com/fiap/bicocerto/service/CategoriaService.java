@@ -63,7 +63,7 @@ public class CategoriaService {
     @Transactional
     public void excluir(Long id) {
         Categoria categoria = obter(id);
-        if (prestadorRepository.existsByCategoriaId(id) || prestadorRepository.existsByOutrasCategoriasId(id) || solicitacaoRepository.existsByCategoriaId(id)) {
+        if (prestadorRepository.existsByCategoriasId(id) || solicitacaoRepository.existsByCategoriaId(id)) {
             throw new RegraNegocioException("Categoria em uso por prestadores ou solicitacoes nao pode ser excluida");
         }
         categoriaRepository.delete(categoria);

@@ -43,7 +43,7 @@ public class Solicitacao {
     private String observacao;
 
     /** Quantas fotos o pedido tem (as imagens vem em GET /api/solicitacoes/{id}/fotos). */
-    @org.hibernate.annotations.Formula("(select count(*) from solicitacao_fotos f where f.solicitacao_id = id)")
+    @Column(name = "quantidade_fotos", nullable = false)
     private int quantidadeFotos;
 
     @Enumerated(EnumType.STRING)

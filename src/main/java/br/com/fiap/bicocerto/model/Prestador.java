@@ -44,12 +44,15 @@ public class Prestador {
     @Column(name = "total_avaliacoes", nullable = false)
     private int totalAvaliacoes;
 
-    /** Outros servicos que o prestador tambem faz: ele recebe os pedidos dessas categorias tambem. */
-    @ManyToMany(fetch = FetchType.EAGER) // no maximo 2 itens; usados em toda resposta e checagem de acesso
+    /**
+     * Todos os servicos que o prestador faz (o principal tambem): ele recebe os pedidos de todas essas categorias.
+     * EAGER porque a lista aparece em toda resposta e em toda checagem de acesso (open-in-view esta desligado).
+     */
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "prestador_categorias",
             joinColumns = @JoinColumn(name = "prestador_id"),
             inverseJoinColumns = @JoinColumn(name = "categoria_id"))
-    private Set<Categoria> outrasCategorias = new LinkedHashSet<>();
+    private Set<Categoria> categorias = new LinkedHashSet<>();
 
     /** Foto de perfil (data URI base64 JPEG/PNG). */
     @Column(columnDefinition = "TEXT")
@@ -77,12 +80,12 @@ public class Prestador {
     @Column(name = "atende_emergencia", nullable = false)
     private boolean atendeEmergencia;
 
-    /** Fotos na galeria de trabalhos realizados (calculado na consulta). */
-    @org.hibernate.annotations.Formula("(select count(*) from prestador_fotos f where f.prestador_id = id)")
+    /** Fotos na galeria de trabalhos realizados (atualizado a cada foto enviada ou apagada). */
+    @Column(name = "quantidade_fotos", nullable = false)
     private int quantidadeFotos;
 
     /** Quantos servicos o prestador ja concluiu pelo Bico Certo (calculado na consulta). */
-    @org.hibernate.annotations.Formula("(select count(*) from solicitacoes s where s.prestador_id = id and s.status = 'CONCLUIDA')")
+    @Column(name = "servicos_concluidos", nullable = false)
     private int servicosConcluidos;
 
     protected Prestador() {
@@ -92,7 +95,14 @@ public class Prestador {
         this.usuario = usuario;
         this.categoria = categoria;
         this.descricao = descricao;
+        if (categoria != null) {
+            this.categorias.add(categoria);
+        }
     }
+
+    public void registrarServicoConcluido() { servicosConcluidos++; }
+    public void fotoAdicionada() { quantidadeFotos++; }
+    public void fotoRemovida() { quantidadeFotos = Math.max(0, quantidadeFotos - 1); }
 
     /** Recalcula a media incluindo uma nova nota (1 a 5). */
     public void registrarAvaliacao(int nota) {
@@ -104,20 +114,21 @@ public class Prestador {
     /** Atende pedidos desta categoria (a principal ou uma das outras). */
     public boolean atende(Long categoriaId) {
         return categoria.getId().equals(categoriaId)
-                || outrasCategorias.stream().anyMatch(c -> c.getId().equals(categoriaId));
+                || categorias.stream().anyMatch(c -> c.getId().equals(categoriaId));
     }
 
     /** Ids de todas as categorias atendidas, a principal primeiro. */
     public List<Long> idsDasCategorias() {
         List<Long> ids = new ArrayList<>();
         ids.add(categoria.getId());
-        outrasCategorias.forEach(c -> ids.add(c.getId()));
+        getOutrasCategorias().forEach(c -> ids.add(c.getId()));
         return ids;
     }
 
     public void definirOutrasCategorias(List<Categoria> categorias) {
-        outrasCategorias.clear();
-        categorias.stream().filter(c -> !c.getId().equals(categoria.getId())).forEach(outrasCategorias::add);
+        this.categorias.clear();
+        this.categorias.add(categoria);
+        this.categorias.addAll(categorias);
     }
 
     public void definirExperiencia(Integer anosExperiencia, String especialidades, String diferenciais) {
@@ -140,7 +151,11 @@ public class Prestador {
     public Long getId() { return id; }
     public Usuario getUsuario() { return usuario; }
     public Categoria getCategoria() { return categoria; }
-    public void setCategoria(Categoria categoria) { this.categoria = categoria; }
+    /** Troca o servico principal (a lista completa e refeita em definirOutrasCategorias). */
+    public void setCategoria(Categoria categoria) {
+        this.categoria = categoria;
+        this.categorias.add(categoria);
+    }
     public String getDescricao() { return descricao; }
     public void setDescricao(String descricao) { this.descricao = descricao; }
     public String getRegiaoAtendimento() { return regiaoAtendimento; }
@@ -153,7 +168,10 @@ public class Prestador {
     public int getTotalAvaliacoes() { return totalAvaliacoes; }
 
     public int getServicosConcluidos() { return servicosConcluidos; }
-    public Set<Categoria> getOutrasCategorias() { return outrasCategorias; }
+    /** Servicos alem do principal. */
+    public List<Categoria> getOutrasCategorias() {
+        return categorias.stream().filter(c -> !c.getId().equals(categoria.getId())).toList();
+    }
     public String getFoto() { return foto; }
     public void setFoto(String foto) { this.foto = foto; }
     public Integer getAnosExperiencia() { return anosExperiencia; }

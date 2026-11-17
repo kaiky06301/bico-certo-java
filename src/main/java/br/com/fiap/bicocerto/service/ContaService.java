@@ -100,8 +100,12 @@ public class ContaService {
             throw new RegraNegocioException("Voce tem pedidos ou servicos em andamento. Cancele ou conclua antes de excluir a conta");
         }
         enderecoRepository.deleteByUsuarioId(usuarioId);
-        solicitacaoRepository.limparEnderecosDoCliente(usuarioId);
-        fotoRepository.apagarDoCliente(usuarioId);
+        // os pedidos ficam no historico, mas sem a rua do cliente e sem as fotos (podem mostrar a casa)
+        fotoRepository.deleteBySolicitacaoClienteId(usuarioId);
+        solicitacaoRepository.findByClienteId(usuarioId).forEach(s -> {
+            s.setEndereco(null);
+            s.setQuantidadeFotos(0);
+        });
         // Prestador: foto de perfil e galeria podem identificar a pessoa, entao saem junto (LGPD)
         prestadorRepository.findByUsuarioId(usuarioId).ifPresent(p -> {
             p.setFoto(null);

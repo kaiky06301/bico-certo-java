@@ -36,7 +36,17 @@ public class PrestadorService {
 
     public Page<PrestadorResponse> buscar(Long categoriaId, String bairro, Pageable pageable) {
         String filtroBairro = bairro == null || bairro.isBlank() ? null : bairro.trim();
-        return prestadorRepository.buscar(categoriaId, filtroBairro, pageable).map(PrestadorResponse::from);
+        Page<Prestador> pagina;
+        if (categoriaId != null && filtroBairro != null) {
+            pagina = prestadorRepository.findByCategoriasIdAndUsuarioBairroIgnoreCase(categoriaId, filtroBairro, pageable);
+        } else if (categoriaId != null) {
+            pagina = prestadorRepository.findByCategoriasId(categoriaId, pageable);
+        } else if (filtroBairro != null) {
+            pagina = prestadorRepository.findByUsuarioBairroIgnoreCase(filtroBairro, pageable);
+        } else {
+            pagina = prestadorRepository.findAll(pageable);
+        }
+        return pagina.map(PrestadorResponse::from);
     }
 
     public PrestadorResponse detalhar(Long id) {
@@ -92,6 +102,7 @@ public class PrestadorService {
             throw new RegraNegocioException("A galeria aceita até " + MAXIMO_FOTOS_GALERIA + " fotos. Apague uma para enviar outra");
         }
         PrestadorFoto foto = new PrestadorFoto(prestador, request.imagem(), vazioParaNulo(request.legenda()));
+        prestador.fotoAdicionada();
         return TrabalhoFotoResponse.from(fotoRepository.save(foto));
     }
 
@@ -101,6 +112,7 @@ public class PrestadorService {
         PrestadorFoto foto = fotoRepository.findByIdAndPrestadorId(fotoId, prestador.getId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Foto " + fotoId + " não encontrada na sua galeria"));
         fotoRepository.delete(foto);
+        prestador.fotoRemovida();
     }
 
     /** O modulo .NET guarda o id do usuario (claim uid): o app usa esta busca para abrir o perfil publico. */

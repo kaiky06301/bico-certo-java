@@ -54,7 +54,7 @@ public class SolicitacaoService {
         String obs = vazioParaNulo(observacao);
         String texto = obs == null ? descricao.trim() : descricao.trim() + "\nInformacao adicional: " + obs;
         ResultadoTriagem resultado = triagemService.triar(texto);
-        long prestadores = prestadorRepository.contarQueAtendem(resultado.categoria().getId());
+        long prestadores = prestadorRepository.countByCategoriasId(resultado.categoria().getId());
         return TriagemResponse.from(resultado, prestadores);
     }
 
@@ -118,7 +118,7 @@ public class SolicitacaoService {
         solicitacao.setDescricao(request.descricao().trim());
         solicitacao.setObservacao(vazioParaNulo(request.observacao()));
         if (request.fotos() != null) {
-            fotoRepository.apagarDoPedido(solicitacao.getId());
+            fotoRepository.deleteBySolicitacaoId(solicitacao.getId());
             salvarFotos(solicitacao, request.fotos());
         }
         if (request.bairro() != null && !request.bairro().isBlank()) {
@@ -171,7 +171,7 @@ public class SolicitacaoService {
     @Transactional
     public SolicitacaoResponse assumir(Long id, Long usuarioId) {
         Prestador prestador = prestadorDoUsuario(usuarioId);
-        Solicitacao solicitacao = solicitacaoRepository.buscarParaAtualizar(id)
+        Solicitacao solicitacao = solicitacaoRepository.findParaAtualizarById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao " + id + " nao encontrada"));
         if (!prestador.atende(solicitacao.getCategoria().getId())) {
             throw new AcessoNegadoException("Este pedido nao e da sua categoria de servico");
@@ -191,7 +191,7 @@ public class SolicitacaoService {
      */
     @Transactional
     public SolicitacaoResponse registrarContratacao(Long id, Long clienteId, Long prestadorUsuarioId) {
-        Solicitacao solicitacao = solicitacaoRepository.buscarParaAtualizar(id)
+        Solicitacao solicitacao = solicitacaoRepository.findParaAtualizarById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao " + id + " nao encontrada"));
         if (!solicitacao.getCliente().getId().equals(clienteId)) {
             throw new AcessoNegadoException("So o cliente dono do pedido pode registrar a contratacao");
@@ -220,7 +220,7 @@ public class SolicitacaoService {
     @Transactional
     public SolicitacaoResponse desistir(Long id, Long usuarioId) {
         Prestador prestador = prestadorDoUsuario(usuarioId);
-        Solicitacao solicitacao = solicitacaoRepository.buscarParaAtualizar(id)
+        Solicitacao solicitacao = solicitacaoRepository.findParaAtualizarById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao " + id + " nao encontrada"));
         if (solicitacao.getPrestador() == null || !solicitacao.getPrestador().getId().equals(prestador.getId())) {
             throw new AcessoNegadoException("So o prestador contratado pode desistir do servico");
@@ -236,7 +236,7 @@ public class SolicitacaoService {
     @Transactional
     public SolicitacaoResponse concluir(Long id, Long usuarioId) {
         Prestador prestador = prestadorDoUsuario(usuarioId);
-        Solicitacao solicitacao = solicitacaoRepository.buscarParaAtualizar(id)
+        Solicitacao solicitacao = solicitacaoRepository.findParaAtualizarById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao " + id + " nao encontrada"));
         if (solicitacao.getPrestador() == null || !solicitacao.getPrestador().getId().equals(prestador.getId())) {
             throw new AcessoNegadoException("So o prestador que assumiu o pedido pode concluir");
@@ -245,6 +245,7 @@ public class SolicitacaoService {
             throw new RegraNegocioException("So e possivel concluir pedidos EM_ATENDIMENTO");
         }
         solicitacao.setStatus(StatusSolicitacao.CONCLUIDA);
+        prestador.registrarServicoConcluido();
         eventoProducer.publicarAposCommit(evento(TipoEvento.CONCLUIDA, solicitacao));
         return SolicitacaoResponse.from(solicitacao);
     }
