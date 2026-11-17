@@ -20,6 +20,11 @@ public interface SolicitacaoRepository extends JpaRepository<Solicitacao, Long> 
 
     boolean existsByPrestadorIdAndStatus(Long prestadorId, StatusSolicitacao status);
 
+    /** Exclusao de conta (LGPD): os pedidos ficam no historico, mas sem a rua do cliente. */
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("update Solicitacao s set s.endereco = null where s.cliente.id = :clienteId")
+    void limparEnderecosDoCliente(@org.springframework.data.repository.query.Param("clienteId") Long clienteId);
+
     Page<Solicitacao> findByCategoriaIdAndStatus(Long categoriaId, StatusSolicitacao status, Pageable pageable);
 
     Page<Solicitacao> findByPrestadorId(Long prestadorId, Pageable pageable);

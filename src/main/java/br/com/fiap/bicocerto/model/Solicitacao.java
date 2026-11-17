@@ -31,6 +31,10 @@ public class Solicitacao {
     @Column(nullable = false, length = 80)
     private String bairro;
 
+    /** Rua e numero do servico (do endereco escolhido); so aparece para o prestador depois que ele assume. */
+    @Column(length = 300)
+    private String endereco;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private Urgencia urgencia;
@@ -101,6 +105,8 @@ public class Solicitacao {
     public void setDescricao(String descricao) { this.descricao = descricao; }
     public String getBairro() { return bairro; }
     public void setBairro(String bairro) { this.bairro = bairro; }
+    public String getEndereco() { return endereco; }
+    public void setEndereco(String endereco) { this.endereco = endereco; }
     public Urgencia getUrgencia() { return urgencia; }
     public BigDecimal getPrecoMinimo() { return precoMinimo; }
     public BigDecimal getPrecoMaximo() { return precoMaximo; }

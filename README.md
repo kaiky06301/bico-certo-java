@@ -54,7 +54,7 @@
 
 | Papel | O que pode fazer |
 |---|---|
-| **CLIENTE** | Simular a triagem, criar, editar e cancelar pedidos, acompanhar os seus pedidos, avaliar o prestador, ver o perfil público do prestador antes de contratar, ver as notificações e gerenciar a conta (dados, endereço, senha, avaliações feitas, exclusão) |
+| **CLIENTE** | Simular a triagem, criar, editar e cancelar pedidos, acompanhar os seus pedidos, avaliar o prestador, ver o perfil público do prestador antes de contratar, ver as notificações e gerenciar a conta (dados, **vários endereços salvos**, senha, avaliações feitas, exclusão) |
 | **PRESTADOR** | Ver os pedidos abertos da sua categoria, assumir, concluir, montar o perfil profissional (serviço, experiência, região de atendimento e disponibilidade), ver as notificações e gerenciar a conta |
 | **ADMIN** | Manter a tabela de categorias e preços de referência (CRUD), listar todos os pedidos e os usuários e conceder o selo **"Verificado pelo Bico Certo"** ao prestador depois de conferir os documentos |
 
@@ -64,6 +64,7 @@
 - Só é possível avaliar um pedido **CONCLUÍDO**, uma única vez. A nota média do prestador é recalculada a cada avaliação.
 - Excluir um pedido é uma **exclusão lógica**: o status vira `CANCELADA` e o histórico é mantido.
 - **Exclusão de conta (LGPD):** pede a senha, é bloqueada se houver pedido ou serviço em andamento e **apaga os dados pessoais** (anonimização). O histórico de pedidos e avaliações de outras pessoas continua íntegro, e o login e o token antigo deixam de funcionar.
+- **Vários endereços** (casa, casa dos pais, trabalho): o cliente escolhe um ao criar o pedido. O pedido guarda o bairro e a rua; **antes da contratação o prestador vê só o bairro**, e a rua e o telefone são liberados quando o cliente aceita o orçamento (`PATCH /api/solicitacoes/{id}/contratacao`).
 - Só o **ADMIN** concede o selo de verificado; o prestador não consegue se autoverificar.
 - O **preço justo nunca vem direto do modelo de IA**: ele é calculado pelo sistema sobre a faixa de referência da categoria.
 
@@ -124,7 +125,6 @@ classDiagram
         String senha (BCrypt)
         String telefone
         String bairro
-        String endereco
         Papel papel
         boolean ativo
         anonimizar()
@@ -209,6 +209,19 @@ erDiagram
     USUARIOS ||--o{ NOTIFICACOES : "recebe"
     SOLICITACOES ||--o{ NOTIFICACOES : "gera"
 
+    USUARIOS ||--o{ ENDERECOS : "salva"
+    ENDERECOS {
+        bigint id PK
+        bigint usuario_id FK
+        varchar apelido
+        varchar logradouro
+        varchar complemento
+        varchar bairro
+        varchar cidade
+        varchar uf
+        boolean principal
+        timestamp criado_em
+    }
     USUARIOS {
         bigint id PK
         varchar nome
@@ -216,7 +229,6 @@ erDiagram
         varchar senha
         varchar telefone
         varchar bairro
-        varchar endereco
         varchar papel
         boolean ativo
         timestamp criado_em
@@ -246,6 +258,7 @@ erDiagram
         bigint prestador_id FK
         varchar descricao
         varchar bairro
+        varchar endereco "rua do servico"
         varchar urgencia
         numeric preco_minimo
         numeric preco_maximo
@@ -274,7 +287,7 @@ erDiagram
     }
 ```
 
-As migrations ficam em `src/main/resources/db/migration`: a `V1__Create_tables.sql` cria as tabelas e a `V2__Insert_categorias.sql` carrega a **tabela de referência de preços**.
+As migrations ficam em `src/main/resources/db/migration`: a `V1__Create_tables.sql` cria as tabelas e a `V2__Insert_categorias.sql` carrega a **tabela de referência de preços**. A `V3__Perfil_e_conta.sql` acrescenta o perfil profissional e a exclusão de conta, e a `V4__Enderecos.sql` cria os endereços salvos.
 
 ---
 
@@ -469,7 +482,11 @@ Todos usam `Authorization: Bearer <token>`, exceto login e cadastro. As listagen
 | GET / PUT | `/api/prestadores/me` | PRESTADOR | Perfil profissional (serviço, descrição, região, disponibilidade) |
 | GET | `/api/prestadores/usuario/{usuarioId}` | logado | Perfil público do prestador pelo id do usuário (o id que o módulo .NET guarda) |
 | PATCH | `/api/prestadores/{id}/verificacao` | ADMIN | Concede ou retira o selo "Verificado pelo Bico Certo" |
-| GET / PUT | `/api/conta` | logado | Dados pessoais e endereço do usuário logado |
+| GET / PUT | `/api/conta` | logado | Dados pessoais do usuário logado |
+| GET / POST | `/api/conta/enderecos` | logado | Lista e salva endereços (o primeiro vira principal; máximo de 10) |
+| PUT / DELETE | `/api/conta/enderecos/{id}` | dono | Edita ou exclui (excluir o principal promove o próximo) |
+| PATCH | `/api/conta/enderecos/{id}/principal` | dono | Marca como principal |
+| PATCH | `/api/solicitacoes/{id}/contratacao` | CLIENTE dono | Registra o prestador do orçamento aceito no módulo .NET e libera rua e telefone para ele |
 | PUT | `/api/conta/senha` | logado | Troca a senha (exige a atual) |
 | GET | `/api/conta/avaliacoes` | logado | Avaliações que o cliente fez |
 | DELETE | `/api/conta` | logado | Exclui a conta (pede a senha e anonimiza os dados) |
@@ -519,7 +536,7 @@ curl -X PATCH http://localhost:8080/api/solicitacoes/1/assumir -H "Authorization
 
 ## 11. Testes (JUnit + Postman)
 
-### Automatizados (JUnit 5, 24 testes)
+### Automatizados (JUnit 5, 25 testes)
 
 ```bash
 ./mvnw test
@@ -530,12 +547,12 @@ Os testes rodam em **H2**, com as **mesmas migrations do Flyway**. O modelo de I
 |---|---|
 | `TriagemServiceTest` (9) | Normalização da resposta da IA, guardrails de categoria e urgência, cálculo do preço justo e triagem por regras |
 | `PrestadorTest` (1) | Cálculo da nota média |
-| `ContaIntegracaoTest` (5) | Ver e editar os próprios dados (400 na validação), troca de senha exigindo a atual, exclusão com senha que bloqueia login e token antigo, perfil profissional e perfil público pelo id do usuário, selo de verificado só pelo ADMIN |
+| `ContaIntegracaoTest` (6) | Endereços (principal automático, troca de principal, validação, endereço de outro usuário 404, exclusão promovendo o próximo), pedido em outro endereço com a rua escondida do prestador até a contratação, ver e editar os próprios dados (400 na validação), troca de senha exigindo a atual, exclusão com senha que bloqueia login e token antigo, perfil profissional e perfil público pelo id do usuário, selo de verificado só pelo ADMIN |
 | `FluxoSolicitacaoIntegracaoTest` (9) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade e IA fora do ar |
 
 ### Postman
 
-A coleção `postman/Bico-Certo-API.postman_collection.json` tem **43 requisições e 57 asserções** (inclui a pasta **4 - Perfil e conta**) e roda em ordem com o Runner. Os tokens são salvos automaticamente em variáveis. Também pode ser rodada pelo terminal, com a API no ar:
+A coleção `postman/Bico-Certo-API.postman_collection.json` tem **52 requisições e 66 asserções** (inclui a pasta **4 - Perfil e conta**) e roda em ordem com o Runner. Os tokens são salvos automaticamente em variáveis. Também pode ser rodada pelo terminal, com a API no ar:
 
 ```bash
 npx newman run postman/Bico-Certo-API.postman_collection.json --delay-request 300

@@ -105,6 +105,14 @@ public class SolicitacaoController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{id}/contratacao")
+    @PreAuthorize("hasRole('CLIENTE')")
+    @Operation(summary = "Cliente registra o prestador contratado (orcamento aceito no modulo .NET); libera endereco e telefone")
+    public SolicitacaoResponse registrarContratacao(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado usuario,
+                                                    @RequestBody @Valid ContratacaoRegistroRequest request) {
+        return solicitacaoService.registrarContratacao(id, usuario.getId(), request.prestadorUsuarioId());
+    }
+
     @PatchMapping("/{id}/assumir")
     @PreAuthorize("hasRole('PRESTADOR')")
     @Operation(summary = "Prestador assume o pedido aberto da sua categoria")

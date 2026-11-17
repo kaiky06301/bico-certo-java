@@ -9,6 +9,7 @@ public record SolicitacaoResponse(
         Long id,
         String descricao,
         String bairro,
+        String endereco,
         StatusSolicitacao status,
         Urgencia urgencia,
         TriagemResponse.CategoriaResumo categoria,
@@ -26,7 +27,17 @@ public record SolicitacaoResponse(
     public record Contato(Long id, String nome, String telefone, BigDecimal notaMedia) {
     }
 
+    /** Visao de prestadores e admin: telefone e rua so depois que o pedido foi assumido. */
     public static SolicitacaoResponse from(Solicitacao s) {
+        return montar(s, false);
+    }
+
+    /** Visao do proprio cliente: ele sempre ve a rua que escolheu. */
+    public static SolicitacaoResponse paraDono(Solicitacao s) {
+        return montar(s, true);
+    }
+
+    private static SolicitacaoResponse montar(Solicitacao s, boolean dono) {
         boolean contatoLiberado = s.getStatus() == StatusSolicitacao.EM_ATENDIMENTO
                 || s.getStatus() == StatusSolicitacao.CONCLUIDA;
         Usuario c = s.getCliente();
@@ -37,7 +48,8 @@ public record SolicitacaoResponse(
             prestador = new Contato(p.getId(), p.getUsuario().getNome(),
                     contatoLiberado ? p.getUsuario().getTelefone() : null, p.getNotaMedia());
         }
-        return new SolicitacaoResponse(s.getId(), s.getDescricao(), s.getBairro(), s.getStatus(), s.getUrgencia(),
+        String endereco = dono || contatoLiberado ? s.getEndereco() : null;
+        return new SolicitacaoResponse(s.getId(), s.getDescricao(), s.getBairro(), endereco, s.getStatus(), s.getUrgencia(),
                 new TriagemResponse.CategoriaResumo(s.getCategoria().getId(), s.getCategoria().getNome()),
                 s.getPrecoMinimo(), s.getPrecoMaximo(), s.getResumoTriagem(), s.getDicaSeguranca(),
                 s.getOrigemTriagem(), cliente, prestador, s.getCriadaEm(), s.getAtualizadaEm());

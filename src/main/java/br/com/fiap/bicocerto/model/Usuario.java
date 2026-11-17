@@ -27,9 +27,6 @@ public class Usuario {
     @Column(nullable = false, length = 80)
     private String bairro;
 
-    @Column(length = 200)
-    private String endereco;
-
     @Column(nullable = false)
     private boolean ativo = true;
 
@@ -67,8 +64,6 @@ public class Usuario {
     public String getBairro() { return bairro; }
     public void setBairro(String bairro) { this.bairro = bairro; }
     public Papel getPapel() { return papel; }
-    public String getEndereco() { return endereco; }
-    public void setEndereco(String endereco) { this.endereco = endereco; }
     public boolean isAtivo() { return ativo; }
     public void setSenha(String senhaCriptografada) { this.senha = senhaCriptografada; }
 
@@ -80,7 +75,6 @@ public class Usuario {
         this.nome = "Usuario removido";
         this.email = "removido-" + id + "@bicocerto.invalid";
         this.telefone = null;
-        this.endereco = null;
         this.senha = senhaInutilizavel;
         this.ativo = false;
     }

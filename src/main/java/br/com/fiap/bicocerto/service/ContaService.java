@@ -9,6 +9,7 @@ import br.com.fiap.bicocerto.dto.UsuarioResponse;
 import br.com.fiap.bicocerto.model.StatusSolicitacao;
 import br.com.fiap.bicocerto.model.Usuario;
 import br.com.fiap.bicocerto.repository.AvaliacaoRepository;
+import br.com.fiap.bicocerto.repository.EnderecoRepository;
 import br.com.fiap.bicocerto.repository.PrestadorRepository;
 import br.com.fiap.bicocerto.repository.SolicitacaoRepository;
 import br.com.fiap.bicocerto.repository.UsuarioRepository;
@@ -29,15 +30,17 @@ public class ContaService {
     private final PrestadorRepository prestadorRepository;
     private final SolicitacaoRepository solicitacaoRepository;
     private final AvaliacaoRepository avaliacaoRepository;
+    private final EnderecoRepository enderecoRepository;
     private final PasswordEncoder passwordEncoder;
 
     public ContaService(UsuarioRepository usuarioRepository, PrestadorRepository prestadorRepository,
                         SolicitacaoRepository solicitacaoRepository, AvaliacaoRepository avaliacaoRepository,
-                        PasswordEncoder passwordEncoder) {
+                        EnderecoRepository enderecoRepository, PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
         this.prestadorRepository = prestadorRepository;
         this.solicitacaoRepository = solicitacaoRepository;
         this.avaliacaoRepository = avaliacaoRepository;
+        this.enderecoRepository = enderecoRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -51,7 +54,6 @@ public class ContaService {
         usuario.setNome(request.nome().trim());
         usuario.setTelefone(vazioParaNulo(request.telefone()));
         usuario.setBairro(request.bairro().trim());
-        usuario.setEndereco(vazioParaNulo(request.endereco()));
         return UsuarioResponse.from(usuario);
     }
 
@@ -74,7 +76,7 @@ public class ContaService {
 
     /**
      * Exclui a conta: exige a senha e bloqueia se houver servico em andamento (para o outro lado nao ficar sem
-     * contato). Os dados pessoais sao apagados (anonimizados) e o login para de funcionar.
+     * contato). Os dados pessoais (inclusive enderecos salvos e a rua dos pedidos) sao apagados e o login para de funcionar.
      */
     @Transactional
     public void excluir(Long usuarioId, String senha) {
@@ -90,6 +92,8 @@ public class ContaService {
         if (pedidoAtivo || atendimentoAtivo) {
             throw new RegraNegocioException("Voce tem pedidos ou servicos em andamento. Cancele ou conclua antes de excluir a conta");
         }
+        enderecoRepository.deleteByUsuarioId(usuarioId);
+        solicitacaoRepository.limparEnderecosDoCliente(usuarioId);
         usuario.anonimizar(passwordEncoder.encode(UUID.randomUUID().toString()));
     }
 

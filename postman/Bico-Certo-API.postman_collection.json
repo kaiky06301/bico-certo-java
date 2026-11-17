@@ -1541,7 +1541,7 @@
           ]
         },
         {
-          "name": "Atualiza dados pessoais e endereco",
+          "name": "Atualiza dados pessoais",
           "request": {
             "method": "PUT",
             "header": [
@@ -1572,7 +1572,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Maria Souza\",\n  \"telefone\": \"(11) 91111-1111\",\n  \"bairro\": \"Capao Redondo\",\n  \"endereco\": \"Rua das Flores, 120\"\n}"
+              "raw": "{\n  \"nome\": \"Maria Souza\",\n  \"telefone\": \"(11) 91111-1111\",\n  \"bairro\": \"Capao Redondo\"\n}"
             }
           },
           "event": [
@@ -1581,7 +1581,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200 e endereco salvo\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().endereco).to.eql(\"Rua das Flores, 120\"); });"
+                  "pm.test(\"Status 200 e bairro salvo\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().bairro).to.eql(\"Capao Redondo\"); });"
                 ]
               }
             }
@@ -1920,6 +1920,423 @@
               }
             }
           ]
+        },
+        {
+          "name": "Salva endereco (casa dos pais)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/conta/enderecos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "conta",
+                "enderecos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"apelido\": \"Casa dos pais\",\n  \"logradouro\": \"Av. Brasil, 500\",\n  \"complemento\": \"casa 2\",\n  \"bairro\": \"Jardim Angela\",\n  \"cidade\": \"Sao Paulo\",\n  \"uf\": \"SP\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"enderecoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Endereco invalido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/conta/enderecos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "conta",
+                "enderecos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"apelido\": \"\",\n  \"logradouro\": \"\",\n  \"bairro\": \"\",\n  \"cidade\": \"\",\n  \"uf\": \"Sao\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Torna o endereco principal",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/conta/enderecos/{{enderecoId}}/principal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "conta",
+                "enderecos",
+                "{{enderecoId}}",
+                "principal"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 e principal\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().principal).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lista meus enderecos (principal primeiro)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/conta/enderecos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "conta",
+                "enderecos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Principal vem primeiro\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json()[0].principal).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pedido no endereco salvo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/solicitacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "solicitacoes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"O chuveiro da casa dos meus pais parou de esquentar e cheira a queimado\",\n  \"enderecoId\": \"{{enderecoId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 com bairro e rua do endereco\", () => { pm.response.to.have.status(201); const s = pm.response.json(); pm.expect(s.bairro).to.eql(\"Jardim Angela\"); pm.expect(s.endereco).to.include(\"Av. Brasil, 500\"); });",
+                  "pm.collectionVariables.set(\"pedidoEndereco\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prestador nao ve a rua antes da contratacao",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/solicitacoes/{{pedidoEndereco}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "solicitacoes",
+                "{{pedidoEndereco}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEletricista}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Endereco oculto\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().endereco).to.eql(null); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cliente registra o prestador contratado",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/solicitacoes/{{pedidoEndereco}}/contratacao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "solicitacoes",
+                "{{pedidoEndereco}}",
+                "contratacao"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prestadorUsuarioId\": \"{{prestadorUsuarioId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 e em atendimento\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql(\"EM_ATENDIMENTO\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prestador contratado ve o endereco completo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/solicitacoes/{{pedidoEndereco}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "solicitacoes",
+                "{{pedidoEndereco}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEletricista}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Endereco liberado\", () => pm.expect(pm.response.json().endereco).to.include(\"Av. Brasil, 500\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Exclui o endereco",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/conta/enderecos/{{enderecoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "conta",
+                "enderecos",
+                "{{enderecoId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
@@ -1967,6 +2384,14 @@
     },
     {
       "key": "prestadorId",
+      "value": ""
+    },
+    {
+      "key": "enderecoId",
+      "value": ""
+    },
+    {
+      "key": "pedidoEndereco",
       "value": ""
     }
   ]

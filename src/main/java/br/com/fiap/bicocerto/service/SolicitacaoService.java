@@ -30,10 +30,12 @@ public class SolicitacaoService {
     private final PrestadorRepository prestadorRepository;
     private final TriagemService triagemService;
     private final SolicitacaoEventoProducer eventoProducer;
+    private final EnderecoService enderecoService;
 
     public SolicitacaoService(SolicitacaoRepository solicitacaoRepository, UsuarioRepository usuarioRepository,
                               PrestadorRepository prestadorRepository, TriagemService triagemService,
-                              SolicitacaoEventoProducer eventoProducer) {
+                              SolicitacaoEventoProducer eventoProducer, EnderecoService enderecoService) {
+        this.enderecoService = enderecoService;
         this.solicitacaoRepository = solicitacaoRepository;
         this.usuarioRepository = usuarioRepository;
         this.prestadorRepository = prestadorRepository;
@@ -55,15 +57,16 @@ public class SolicitacaoService {
         String bairro = request.bairro() == null || request.bairro().isBlank() ? cliente.getBairro() : request.bairro().trim();
 
         Solicitacao solicitacao = new Solicitacao(cliente, request.descricao().trim(), bairro);
+        aplicarEndereco(solicitacao, clienteId, request.enderecoId());
         aplicarTriagem(solicitacao);
         solicitacao = solicitacaoRepository.save(solicitacao);
 
         eventoProducer.publicarAposCommit(evento(TipoEvento.CRIADA, solicitacao));
-        return SolicitacaoResponse.from(solicitacao);
+        return SolicitacaoResponse.paraDono(solicitacao);
     }
 
     public Page<SolicitacaoResponse> minhas(Long clienteId, Pageable pageable) {
-        return solicitacaoRepository.findByClienteId(clienteId, pageable).map(SolicitacaoResponse::from);
+        return solicitacaoRepository.findByClienteId(clienteId, pageable).map(SolicitacaoResponse::paraDono);
     }
 
     /** Pedidos ABERTOS da categoria do prestador logado. */
@@ -89,7 +92,8 @@ public class SolicitacaoService {
     public SolicitacaoResponse buscar(Long id, UsuarioAutenticado usuario) {
         Solicitacao solicitacao = obter(id);
         verificarLeitura(solicitacao, usuario);
-        return SolicitacaoResponse.from(solicitacao);
+        return solicitacao.getCliente().getId().equals(usuario.getId())
+                ? SolicitacaoResponse.paraDono(solicitacao) : SolicitacaoResponse.from(solicitacao);
     }
 
     /** O cliente pode corrigir a descricao enquanto ninguem assumiu; a triagem e refeita. */
@@ -103,8 +107,19 @@ public class SolicitacaoService {
         if (request.bairro() != null && !request.bairro().isBlank()) {
             solicitacao.setBairro(request.bairro().trim());
         }
+        aplicarEndereco(solicitacao, clienteId, request.enderecoId());
         aplicarTriagem(solicitacao);
-        return SolicitacaoResponse.from(solicitacao);
+        return SolicitacaoResponse.paraDono(solicitacao);
+    }
+
+    /** Endereco escolhido em "Meus enderecos": define bairro e rua (o pedido guarda o texto, nao o id). */
+    private void aplicarEndereco(Solicitacao solicitacao, Long clienteId, Long enderecoId) {
+        if (enderecoId == null) {
+            return;
+        }
+        Endereco endereco = enderecoService.obter(clienteId, enderecoId);
+        solicitacao.setBairro(endereco.getBairro());
+        solicitacao.setEndereco(endereco.textoCompleto());
     }
 
     /** Exclusao logica: o pedido fica no historico como CANCELADA. */
@@ -133,6 +148,34 @@ public class SolicitacaoService {
         solicitacao.setStatus(StatusSolicitacao.EM_ATENDIMENTO);
         eventoProducer.publicarAposCommit(evento(TipoEvento.ASSUMIDA, solicitacao));
         return SolicitacaoResponse.from(solicitacao);
+    }
+
+    /**
+     * O cliente aceitou o orcamento no modulo .NET: o pedido passa para o prestador contratado (EM_ATENDIMENTO).
+     * A partir daqui o prestador ve o endereco completo e o telefone para ir ate o local.
+     */
+    @Transactional
+    public SolicitacaoResponse registrarContratacao(Long id, Long clienteId, Long prestadorUsuarioId) {
+        Solicitacao solicitacao = solicitacaoRepository.buscarParaAtualizar(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao " + id + " nao encontrada"));
+        if (!solicitacao.getCliente().getId().equals(clienteId)) {
+            throw new AcessoNegadoException("So o cliente dono do pedido pode registrar a contratacao");
+        }
+        Prestador prestador = prestadorDoUsuario(prestadorUsuarioId);
+        if (solicitacao.getStatus() == StatusSolicitacao.EM_ATENDIMENTO
+                && solicitacao.getPrestador() != null && solicitacao.getPrestador().getId().equals(prestador.getId())) {
+            return SolicitacaoResponse.paraDono(solicitacao); // repeticao (internet instavel): nada muda
+        }
+        if (!solicitacao.getCategoria().getId().equals(prestador.getCategoria().getId())) {
+            throw new RegraNegocioException("O prestador contratado nao atende a categoria deste pedido");
+        }
+        if (solicitacao.getStatus() != StatusSolicitacao.ABERTA) {
+            throw new RegraNegocioException("Este pedido ja foi assumido ou nao esta mais aberto");
+        }
+        solicitacao.setPrestador(prestador);
+        solicitacao.setStatus(StatusSolicitacao.EM_ATENDIMENTO);
+        eventoProducer.publicarAposCommit(evento(TipoEvento.ASSUMIDA, solicitacao));
+        return SolicitacaoResponse.paraDono(solicitacao);
     }
 
     @Transactional

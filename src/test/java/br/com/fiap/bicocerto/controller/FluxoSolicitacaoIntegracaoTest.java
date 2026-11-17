@@ -53,6 +53,7 @@ class FluxoSolicitacaoIntegracaoTest {
     @Autowired private SolicitacaoRepository solicitacaoRepository;
     @Autowired private AvaliacaoRepository avaliacaoRepository;
     @Autowired private NotificacaoRepository notificacaoRepository;
+    @Autowired private EnderecoRepository enderecoRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
     @MockitoBean private ChatModel chatModel;
@@ -60,6 +61,7 @@ class FluxoSolicitacaoIntegracaoTest {
 
     @BeforeEach
     void preparar() {
+        enderecoRepository.deleteAll();
         notificacaoRepository.deleteAll();
         avaliacaoRepository.deleteAll();
         solicitacaoRepository.deleteAll();

@@ -7,6 +7,8 @@ import br.com.fiap.bicocerto.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,6 +20,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.json.JsonMapper;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -37,6 +41,7 @@ class ContaIntegracaoTest {
     @Autowired private SolicitacaoRepository solicitacaoRepository;
     @Autowired private AvaliacaoRepository avaliacaoRepository;
     @Autowired private NotificacaoRepository notificacaoRepository;
+    @Autowired private EnderecoRepository enderecoRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
     @MockitoBean private ChatModel chatModel;
@@ -47,6 +52,7 @@ class ContaIntegracaoTest {
 
     @BeforeEach
     void preparar() {
+        enderecoRepository.deleteAll();
         notificacaoRepository.deleteAll();
         avaliacaoRepository.deleteAll();
         solicitacaoRepository.deleteAll();
@@ -73,14 +79,87 @@ class ContaIntegracaoTest {
                 .andExpect(jsonPath("$.senha").doesNotExist());
 
         mockMvc.perform(put("/api/conta").header("Authorization", maria).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nome\":\"Maria Souza\",\"telefone\":\"(11) 98888-7777\",\"bairro\":\"Campo Limpo\",\"endereco\":\"Rua das Flores, 120\"}"))
+                        .content("{\"nome\":\"Maria Souza\",\"telefone\":\"(11) 98888-7777\",\"bairro\":\"Campo Limpo\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Maria Souza"))
-                .andExpect(jsonPath("$.endereco").value("Rua das Flores, 120"));
+                .andExpect(jsonPath("$.bairro").value("Campo Limpo"));
 
         mockMvc.perform(put("/api/conta").header("Authorization", maria).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nome\":\"\",\"telefone\":\"abc\",\"bairro\":\"\"}"))
+                        .content("{\"nome\":\"\",\"telefone\":\"abc\",\"bairro\":\"\",\"cidade\":\"Sao Paulo\",\"uf\":\"Sao\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void enderecosSalvosEPedidoEmOutroLugar() throws Exception {
+        String maria = token("maria@teste.com", SENHA);
+        String base = "/api/conta/enderecos";
+
+        // o primeiro endereco vira principal automaticamente
+        mockMvc.perform(post(base).header("Authorization", maria).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"apelido\":\"Casa\",\"logradouro\":\"Rua das Flores, 120\",\"bairro\":\"Capao Redondo\",\"cidade\":\"Sao Paulo\",\"uf\":\"sp\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.uf").value("SP"))
+                .andExpect(jsonPath("$.principal").value(true));
+
+        String resposta = mockMvc.perform(post(base).header("Authorization", maria).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"apelido\":\"Casa da mae\",\"logradouro\":\"Av. Brasil, 500\",\"complemento\":\"casa 2\",\"bairro\":\"Jardim Angela\",\"cidade\":\"Sao Paulo\",\"uf\":\"SP\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.principal").value(false))
+                .andReturn().getResponse().getContentAsString();
+        long casaDaMae = jsonMapper.readTree(resposta).get("id").asLong();
+
+        mockMvc.perform(post(base).header("Authorization", maria).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"apelido\":\"\",\"logradouro\":\"\",\"bairro\":\"\"}"))
+                .andExpect(status().isBadRequest());
+
+        // marcar outro como principal desmarca o anterior
+        mockMvc.perform(patch(base + "/{id}/principal", casaDaMae).header("Authorization", maria))
+                .andExpect(jsonPath("$.principal").value(true));
+        mockMvc.perform(get(base).header("Authorization", maria))
+                .andExpect(jsonPath("$[0].apelido").value("Casa da mae"))
+                .andExpect(jsonPath("$[1].principal").value(false));
+
+        // outro usuario nao usa o endereco da Maria
+        mockMvc.perform(delete(base + "/{id}", casaDaMae).header("Authorization", token("joao@teste.com", SENHA)))
+                .andExpect(status().isNotFound());
+
+        // pedido na casa da mae: o bairro vem do endereco; o prestador nao ve a rua antes de assumir
+        when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
+        when(chatModel.call(any(Prompt.class))).thenThrow(new RuntimeException("IA fora do ar"));
+        String pedido = mockMvc.perform(post("/api/solicitacoes").header("Authorization", maria)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"descricao\":\"A tomada da cozinha esta soltando faisca\",\"enderecoId\":" + casaDaMae + "}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.bairro").value("Jardim Angela"))
+                .andExpect(jsonPath("$.endereco").value("Av. Brasil, 500 - casa 2, Sao Paulo/SP"))
+                .andReturn().getResponse().getContentAsString();
+        long pedidoId = jsonMapper.readTree(pedido).get("id").asLong();
+
+        String joao = token("joao@teste.com", SENHA);
+        mockMvc.perform(get("/api/solicitacoes/{id}", pedidoId).header("Authorization", joao))
+                .andExpect(jsonPath("$.endereco").doesNotExist());
+        // o cliente aceita o orcamento do Joao: o pedido passa para ele e o endereco completo e liberado
+        String contratacao = "{\"prestadorUsuarioId\":" + prestadorUsuarioId + "}";
+        mockMvc.perform(patch("/api/solicitacoes/{id}/contratacao", pedidoId).header("Authorization", joao)
+                        .contentType(MediaType.APPLICATION_JSON).content(contratacao))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(patch("/api/solicitacoes/{id}/contratacao", pedidoId).header("Authorization", maria)
+                        .contentType(MediaType.APPLICATION_JSON).content(contratacao))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EM_ATENDIMENTO"));
+        // repetir (internet instavel) nao quebra
+        mockMvc.perform(patch("/api/solicitacoes/{id}/contratacao", pedidoId).header("Authorization", maria)
+                        .contentType(MediaType.APPLICATION_JSON).content(contratacao))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/solicitacoes/{id}", pedidoId).header("Authorization", joao))
+                .andExpect(jsonPath("$.endereco").value("Av. Brasil, 500 - casa 2, Sao Paulo/SP"));
+
+        // excluir o endereco principal promove o proximo; o pedido guarda o texto e nao e afetado
+        mockMvc.perform(delete(base + "/{id}", casaDaMae).header("Authorization", maria))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get(base).header("Authorization", maria))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].principal").value(true));
     }
 
     @Test
