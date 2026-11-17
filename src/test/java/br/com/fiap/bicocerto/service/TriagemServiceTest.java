@@ -123,4 +123,30 @@ class TriagemServiceTest {
         assertThat(TriagemService.triarPorRegras("Preciso assentar piso e fazer o reboco do muro", todas).categoria())
                 .isSameAs(pedreiro);
     }
+
+    @Test
+    void respostaDoServicoDeIaUsaFaixaDoRagLimitadaAReferencia() {
+        var resposta = new TriagemService.RespostaServicoIa("Encanamento",
+                new TriagemService.FaixaServicoIa(40, 160, 120, 5),
+                "Parece entupimento. Vizinhos pagaram entre R$ 40 e R$ 160.", null, "llm");
+
+        Optional<ResultadoTriagem> resultado = TriagemService.deServicoIa(resposta, categorias, "pia entupida");
+
+        assertThat(resultado).isPresent();
+        assertThat(resultado.get().categoria()).isSameAs(encanamento);
+        assertThat(resultado.get().precoMinimo()).isEqualByComparingTo("70.00"); // 40 subiu para o minimo da categoria
+        assertThat(resultado.get().precoMaximo()).isEqualByComparingTo("160.00");
+        assertThat(resultado.get().resumo()).startsWith("Parece entupimento");
+        assertThat(resultado.get().origem()).isEqualTo(OrigemTriagem.IA);
+    }
+
+    @Test
+    void servicoDeIaSemCategoriaOuComCategoriaDesconhecidaEhIgnorado() {
+        var foraDoEscopo = new TriagemService.RespostaServicoIa(null, null, "Nao identificado", null, "fora-do-escopo");
+        var desconhecida = new TriagemService.RespostaServicoIa("Jardinagem",
+                new TriagemService.FaixaServicoIa(50, 90, 70, 4), "Cortar grama", null, "llm");
+
+        assertThat(TriagemService.deServicoIa(foraDoEscopo, categorias, "pizza")).isEmpty();
+        assertThat(TriagemService.deServicoIa(desconhecida, categorias, "grama alta")).isEmpty();
+    }
 }

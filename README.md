@@ -434,6 +434,16 @@ POST /api/solicitacoes/triagem
 
 Nos testes manuais com 8 descrições diferentes (elétrica, encanamento, montagem, limpeza, pintura e pequenos reparos), a triagem acertou a categoria nos 8 casos.
 
+
+### Serviço de IA em Python (ML + RAG), opcional
+
+Com a variável `IA_SERVICO_URL` configurada (ex.: `http://localhost:8010`), a triagem passa **primeiro** pelo serviço [bico-certo-ia](https://github.com/kaiky06301/bico-certo-ia), feito na disciplina de IA generativa. Ele faz três coisas:
+- classifica o problema com **Machine Learning** (TF-IDF + SVM);
+- calcula a faixa de preço com **RAG**, a partir dos serviços parecidos já feitos no bairro;
+- escreve a orientação com o LLM, com checagem de valores.
+
+O `TriagemService` usa o `RestClient` do Spring para chamar `POST /triagem`. Antes de aceitar a resposta, ele confere se a categoria existe no banco e **limita a faixa à faixa de referência da categoria**. Se o serviço estiver fora do ar ou não reconhecer o problema, a triagem segue o fluxo desta seção (Spring AI e depois regras). Sem a variável, nada muda.
+
 ---
 
 ## 7. Mensageria com RabbitMQ
@@ -506,6 +516,7 @@ Acesse o Swagger em **http://localhost:8080/swagger-ui.html**: faça login em `P
 | `JWT_SECRET`, `JWT_EXPIRATION_MS` | Assinatura e validade do token |
 | `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST`, `RABBITMQ_SSL` | Broker de mensagens (na nuvem: CloudAMQP com `RABBITMQ_SSL=true` e porta 5671) |
 | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` | Modelo de IA local |
+| `IA_SERVICO_URL` | Opcional: serviço de IA em Python ([bico-certo-ia](https://github.com/kaiky06301/bico-certo-ia)). Vazio = só Spring AI |
 | `SEED_PASSWORD` | Senha dos usuários de teste criados na primeira execução |
 
 
@@ -635,7 +646,7 @@ curl -X PATCH http://localhost:8080/api/solicitacoes/1/assumir -H "Authorization
 
 ## 11. Testes (JUnit + Postman)
 
-### Automatizados (JUnit 5, 34 testes)
+### Automatizados (JUnit 5, 36 testes)
 
 ```bash
 ./mvnw test
@@ -644,7 +655,7 @@ Os testes rodam em **H2**, com as **mesmas migrations do Flyway**. O modelo de I
 
 | Classe | O que cobre |
 |---|---|
-| `TriagemServiceTest` (10) | Normalização da resposta da IA, guardrails de categoria e urgência, cálculo do preço justo e triagem por regras |
+| `TriagemServiceTest` (12) | Normalização da resposta da IA, guardrails de categoria e urgência, cálculo do preço justo, triagem por regras e resposta do serviço de IA em Python (faixa limitada à referência, categoria desconhecida ignorada) |
 | `PrestadorTest` (1) | Cálculo da nota média |
 | `ContaIntegracaoTest` (7) | Endereços (principal automático, troca de principal, validação, endereço de outro usuário 404, exclusão promovendo o próximo), pedido em outro endereço com a rua escondida do prestador até a contratação, ver e editar os próprios dados (400 na validação), troca de senha exigindo a atual, exclusão com senha que bloqueia login e token antigo, perfil profissional e perfil público pelo id do usuário, selo de verificado só pelo ADMIN, perfil completo (horário inválido 400, término antes do início 422, foto de perfil, galeria com limite de 6, cliente não apaga foto de ninguém) |
 | `FluxoSolicitacaoIntegracaoTest` (16) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade, IA fora do ar, fotos e observação (quem pode ver, limite de 3, formato inválido, editar mantendo ou removendo fotos) observação usada na triagem motivo do cancelamento (400 acima de 200 caracteres) e avisos vindos do .NET (403 para quem não participa do pedido, 422 para destinatário de fora, filtro por lida, marcar todas, excluir e limpar lidas) e prestador que marca um segundo serviço passa a ver e receber os pedidos dessa categoria |

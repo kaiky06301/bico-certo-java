@@ -6,10 +6,13 @@ import br.com.fiap.bicocerto.model.OrigemTriagem;
 import br.com.fiap.bicocerto.model.Urgencia;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -17,6 +20,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -33,6 +37,10 @@ import java.util.stream.Collectors;
  * "crua": a categoria precisa existir no banco e o preco justo e calculado pelo sistema sobre a faixa de referencia
  * da categoria, de acordo com a complexidade. Se o modelo estiver fora do ar ou responder algo invalido, entra a
  * triagem por regras (palavras-chave), para o app continuar funcionando.
+ * <p>
+ * Com {@code IA_SERVICO_URL} configurada, a triagem passa primeiro pelo servico de IA em Python (repositorio
+ * bico-certo-ia): classificador de ML + RAG sobre o historico de servicos do bairro + orientacao gerada por LLM.
+ * Se ele falhar ou nao reconhecer o problema, segue o fluxo acima (Spring AI e depois regras).
  */
 @Service
 public class TriagemService {
@@ -66,12 +74,25 @@ public class TriagemService {
     private final ChatClient chatClient;
     private final CategoriaService categoriaService;
     private final String instrucaoSistema;
+    /** Cliente do servico de IA em Python; null quando IA_SERVICO_URL nao esta configurada. */
+    private final RestClient servicoIa;
 
     public TriagemService(ChatClient.Builder chatClientBuilder, CategoriaService categoriaService,
-                          @Value("classpath:prompts/triagem.st") Resource instrucaoSistema) {
+                          @Value("classpath:prompts/triagem.st") Resource instrucaoSistema,
+                          @Value("${bicocerto.ia-servico.url:}") String urlServicoIa) {
         this.chatClient = chatClientBuilder.build();
         this.categoriaService = categoriaService;
         this.instrucaoSistema = ler(instrucaoSistema);
+        this.servicoIa = urlServicoIa == null || urlServicoIa.isBlank() ? null : criarClienteServicoIa(urlServicoIa);
+    }
+
+    /** Resposta do servico de IA em Python (POST /triagem). */
+    record RespostaServicoIa(String categoria, FaixaServicoIa faixa, String orientacao,
+                             @JsonProperty("aviso_seguranca") String avisoSeguranca,
+                             @JsonProperty("origem_orientacao") String origemOrientacao) {
+    }
+
+    record FaixaServicoIa(int minimo, int maximo, int mediana, int amostras) {
     }
 
     /** Resposta estruturada esperada do modelo (Spring AI converte o JSON neste record). */
@@ -106,6 +127,12 @@ public class TriagemService {
         if (categorias.isEmpty()) {
             throw new RegraNegocioException("Nenhuma categoria cadastrada para fazer a triagem");
         }
+        if (servicoIa != null) {
+            Optional<ResultadoTriagem> peloServico = triarPeloServicoIa(descricao, categorias);
+            if (peloServico.isPresent()) {
+                return peloServico.get();
+            }
+        }
         try {
             TriagemIa resposta = chatClient.prompt()
                     .system(instrucaoSistema.replace("{categorias}", tabelaDeReferencia(categorias)))
@@ -121,6 +148,62 @@ public class TriagemService {
             log.warn("Modelo de IA indisponivel ({}), usando triagem por regras", ex.getMessage());
         }
         return triarPorRegras(descricao, categorias);
+    }
+
+    private Optional<ResultadoTriagem> triarPeloServicoIa(String descricao, List<Categoria> categorias) {
+        try {
+            RespostaServicoIa resposta = servicoIa.post().uri("/triagem")
+                    .body(Map.of("descricao", descricao))
+                    .retrieve()
+                    .body(RespostaServicoIa.class);
+            Optional<ResultadoTriagem> resultado = deServicoIa(resposta, categorias, descricao);
+            if (resultado.isEmpty()) {
+                log.info("Servico de IA nao reconheceu o problema, seguindo para o Spring AI");
+            }
+            return resultado;
+        } catch (RuntimeException ex) {
+            log.warn("Servico de IA indisponivel ({}), seguindo para o Spring AI", ex.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Valida a resposta do servico de IA: a categoria precisa existir no banco e a faixa do RAG e limitada a faixa
+     * de referencia da categoria (guardrail). Vazio = servico nao reconheceu o problema.
+     */
+    static Optional<ResultadoTriagem> deServicoIa(RespostaServicoIa resposta, List<Categoria> categorias,
+                                                  String descricao) {
+        if (resposta == null || resposta.categoria() == null || resposta.faixa() == null) {
+            return Optional.empty();
+        }
+        Optional<Categoria> categoria = categorias.stream()
+                .filter(c -> semAcento(c.getNome()).equals(semAcento(resposta.categoria())))
+                .findFirst();
+        if (categoria.isEmpty()) {
+            return Optional.empty();
+        }
+        Categoria cat = categoria.get();
+        BigDecimal minimo = limitar(BigDecimal.valueOf(resposta.faixa().minimo()), cat);
+        BigDecimal maximo = limitar(BigDecimal.valueOf(resposta.faixa().maximo()), cat);
+        if (minimo.compareTo(maximo) >= 0) {
+            return Optional.empty();
+        }
+        Urgencia urgencia = temSinalDeRisco(descricao) ? Urgencia.ALTA : Urgencia.MEDIA;
+        String servico = "Serviço de " + cat.getNome().toLowerCase(Locale.ROOT);
+        String dica = textoOuPadrao(resposta.avisoSeguranca(), dicaPadrao(cat, urgencia));
+        return Optional.of(new ResultadoTriagem(cat, urgencia, minimo, maximo,
+                textoOuPadrao(resposta.orientacao(), servico), dica, OrigemTriagem.IA));
+    }
+
+    private static BigDecimal limitar(BigDecimal valor, Categoria categoria) {
+        return valor.max(categoria.getPrecoMinimo()).min(categoria.getPrecoMaximo()).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private static RestClient criarClienteServicoIa(String url) {
+        SimpleClientHttpRequestFactory fabrica = new SimpleClientHttpRequestFactory();
+        fabrica.setConnectTimeout(Duration.ofSeconds(3));
+        fabrica.setReadTimeout(Duration.ofSeconds(45));
+        return RestClient.builder().baseUrl(url).requestFactory(fabrica).build();
     }
 
     /** Valida e ajusta a resposta do modelo. Vazio = resposta inutilizavel (categoria inexistente). */
