@@ -54,15 +54,17 @@
 
 | Papel | O que pode fazer |
 |---|---|
-| **CLIENTE** | Simular a triagem, criar, editar e cancelar pedidos, acompanhar os seus pedidos, avaliar o prestador e ver as notificações |
-| **PRESTADOR** | Ver os pedidos abertos da sua categoria, assumir, concluir, editar o perfil e ver as notificações |
-| **ADMIN** | Manter a tabela de categorias e preços de referência (CRUD), listar todos os pedidos e os usuários |
+| **CLIENTE** | Simular a triagem, criar, editar e cancelar pedidos, acompanhar os seus pedidos, avaliar o prestador, ver o perfil público do prestador antes de contratar, ver as notificações e gerenciar a conta (dados, endereço, senha, avaliações feitas, exclusão) |
+| **PRESTADOR** | Ver os pedidos abertos da sua categoria, assumir, concluir, montar o perfil profissional (serviço, experiência, região de atendimento e disponibilidade), ver as notificações e gerenciar a conta |
+| **ADMIN** | Manter a tabela de categorias e preços de referência (CRUD), listar todos os pedidos e os usuários e conceder o selo **"Verificado pelo Bico Certo"** ao prestador depois de conferir os documentos |
 
 **Regras de negócio principais**
 - Só o prestador **da categoria do pedido** pode assumi-lo, e um pedido só pode ser assumido **uma vez**: a linha é travada no banco (`PESSIMISTIC_WRITE`) para evitar que dois prestadores assumam ao mesmo tempo.
 - O **telefone** do cliente e do prestador só aparece **depois** que o pedido é assumido (proteção de dados pessoais).
 - Só é possível avaliar um pedido **CONCLUÍDO**, uma única vez. A nota média do prestador é recalculada a cada avaliação.
 - Excluir um pedido é uma **exclusão lógica**: o status vira `CANCELADA` e o histórico é mantido.
+- **Exclusão de conta (LGPD):** pede a senha, é bloqueada se houver pedido ou serviço em andamento e **apaga os dados pessoais** (anonimização). O histórico de pedidos e avaliações de outras pessoas continua íntegro, e o login e o token antigo deixam de funcionar.
+- Só o **ADMIN** concede o selo de verificado; o prestador não consegue se autoverificar.
 - O **preço justo nunca vem direto do modelo de IA**: ele é calculado pelo sistema sobre a faixa de referência da categoria.
 
 ---
@@ -122,7 +124,10 @@ classDiagram
         String senha (BCrypt)
         String telefone
         String bairro
+        String endereco
         Papel papel
+        boolean ativo
+        anonimizar()
     }
     class Categoria {
         Long id
@@ -134,6 +139,9 @@ classDiagram
     class Prestador {
         Long id
         String descricao
+        String regiaoAtendimento
+        String disponibilidade
+        boolean verificado
         BigDecimal notaMedia
         int totalAvaliacoes
         registrarAvaliacao(nota)
@@ -208,7 +216,9 @@ erDiagram
         varchar senha
         varchar telefone
         varchar bairro
+        varchar endereco
         varchar papel
+        boolean ativo
         timestamp criado_em
     }
     CATEGORIAS {
@@ -223,6 +233,9 @@ erDiagram
         bigint usuario_id FK
         bigint categoria_id FK
         varchar descricao
+        varchar regiao_atendimento
+        varchar disponibilidade
+        boolean verificado
         numeric nota_media
         int total_avaliacoes
     }
@@ -453,7 +466,13 @@ Todos usam `Authorization: Bearer <token>`, exceto login e cadastro. As listagen
 | GET | `/api/solicitacoes/{id}` | dono, prestador ou ADMIN | Detalhe do pedido |
 | GET | `/api/prestadores?categoriaId=&bairro=` | logado | Prestadores ordenados pela nota |
 | GET | `/api/prestadores/{id}/avaliacoes` | logado | Avaliações recebidas |
-| GET / PUT | `/api/prestadores/me` | PRESTADOR | Perfil do prestador |
+| GET / PUT | `/api/prestadores/me` | PRESTADOR | Perfil profissional (serviço, descrição, região, disponibilidade) |
+| GET | `/api/prestadores/usuario/{usuarioId}` | logado | Perfil público do prestador pelo id do usuário (o id que o módulo .NET guarda) |
+| PATCH | `/api/prestadores/{id}/verificacao` | ADMIN | Concede ou retira o selo "Verificado pelo Bico Certo" |
+| GET / PUT | `/api/conta` | logado | Dados pessoais e endereço do usuário logado |
+| PUT | `/api/conta/senha` | logado | Troca a senha (exige a atual) |
+| GET | `/api/conta/avaliacoes` | logado | Avaliações que o cliente fez |
+| DELETE | `/api/conta` | logado | Exclui a conta (pede a senha e anonimiza os dados) |
 | GET | `/api/notificacoes` | logado | Notificações (geradas pelo consumer) |
 | PATCH | `/api/notificacoes/{id}/lida` | logado | Marca como lida |
 | GET | `/api/usuarios` | ADMIN | Lista usuários |
@@ -500,7 +519,7 @@ curl -X PATCH http://localhost:8080/api/solicitacoes/1/assumir -H "Authorization
 
 ## 11. Testes (JUnit + Postman)
 
-### Automatizados (JUnit 5, 19 testes)
+### Automatizados (JUnit 5, 24 testes)
 
 ```bash
 ./mvnw test
@@ -511,11 +530,12 @@ Os testes rodam em **H2**, com as **mesmas migrations do Flyway**. O modelo de I
 |---|---|
 | `TriagemServiceTest` (9) | Normalização da resposta da IA, guardrails de categoria e urgência, cálculo do preço justo e triagem por regras |
 | `PrestadorTest` (1) | Cálculo da nota média |
+| `ContaIntegracaoTest` (5) | Ver e editar os próprios dados (400 na validação), troca de senha exigindo a atual, exclusão com senha que bloqueia login e token antigo, perfil profissional e perfil público pelo id do usuário, selo de verificado só pelo ADMIN |
 | `FluxoSolicitacaoIntegracaoTest` (9) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade e IA fora do ar |
 
 ### Postman
 
-A coleção `postman/Bico-Certo-API.postman_collection.json` tem **34 requisições** e roda em ordem com o Runner. Os tokens são salvos automaticamente em variáveis. Também pode ser rodada pelo terminal, com a API no ar:
+A coleção `postman/Bico-Certo-API.postman_collection.json` tem **43 requisições e 57 asserções** (inclui a pasta **4 - Perfil e conta**) e roda em ordem com o Runner. Os tokens são salvos automaticamente em variáveis. Também pode ser rodada pelo terminal, com a API no ar:
 
 ```bash
 npx newman run postman/Bico-Certo-API.postman_collection.json --delay-request 300

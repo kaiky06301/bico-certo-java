@@ -10,4 +10,6 @@ public interface AvaliacaoRepository extends JpaRepository<Avaliacao, Long> {
     boolean existsBySolicitacaoId(Long solicitacaoId);
 
     Page<Avaliacao> findByPrestadorId(Long prestadorId, Pageable pageable);
+
+    Page<Avaliacao> findBySolicitacaoClienteId(Long clienteId, Pageable pageable);
 }

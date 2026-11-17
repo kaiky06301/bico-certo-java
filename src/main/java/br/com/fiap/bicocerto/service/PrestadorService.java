@@ -39,10 +39,24 @@ public class PrestadorService {
         Prestador prestador = doUsuario(usuarioId);
         prestador.setCategoria(categoriaService.obter(request.categoriaId()));
         prestador.setDescricao(request.descricao());
+        prestador.setRegiaoAtendimento(request.regiaoAtendimento());
+        prestador.setDisponibilidade(request.disponibilidade());
         prestador.getUsuario().setBairro(request.bairro().trim());
         if (request.telefone() != null) {
             prestador.getUsuario().setTelefone(request.telefone());
         }
+        return PrestadorResponse.from(prestador);
+    }
+
+    /** O modulo .NET guarda o id do usuario (claim uid): o app usa esta busca para abrir o perfil publico. */
+    public PrestadorResponse doUsuarioPublico(Long usuarioId) {
+        return PrestadorResponse.from(doUsuario(usuarioId));
+    }
+
+    @Transactional
+    public PrestadorResponse definirVerificacao(Long id, boolean verificado) {
+        Prestador prestador = obter(id);
+        prestador.setVerificado(verificado);
         return PrestadorResponse.from(prestador);
     }
 

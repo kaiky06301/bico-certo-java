@@ -3,9 +3,13 @@ package br.com.fiap.bicocerto.dto;
 import br.com.fiap.bicocerto.model.Papel;
 import br.com.fiap.bicocerto.model.Usuario;
 
-public record UsuarioResponse(Long id, String nome, String email, String telefone, String bairro, Papel papel) {
+import java.time.LocalDateTime;
+
+public record UsuarioResponse(Long id, String nome, String email, String telefone, String bairro, String endereco,
+                              Papel papel, boolean ativo, LocalDateTime criadoEm) {
 
     public static UsuarioResponse from(Usuario u) {
-        return new UsuarioResponse(u.getId(), u.getNome(), u.getEmail(), u.getTelefone(), u.getBairro(), u.getPapel());
+        return new UsuarioResponse(u.getId(), u.getNome(), u.getEmail(), u.getTelefone(), u.getBairro(),
+                u.getEndereco(), u.getPapel(), u.isAtivo(), u.getCriadoEm());
     }
 }

@@ -16,6 +16,10 @@ public interface SolicitacaoRepository extends JpaRepository<Solicitacao, Long> 
 
     Page<Solicitacao> findByClienteId(Long clienteId, Pageable pageable);
 
+    boolean existsByClienteIdAndStatusIn(Long clienteId, java.util.Collection<StatusSolicitacao> status);
+
+    boolean existsByPrestadorIdAndStatus(Long prestadorId, StatusSolicitacao status);
+
     Page<Solicitacao> findByCategoriaIdAndStatus(Long categoriaId, StatusSolicitacao status, Pageable pageable);
 
     Page<Solicitacao> findByPrestadorId(Long prestadorId, Pageable pageable);

@@ -65,20 +65,27 @@ public class DataLoader implements CommandLineRunner {
 
         List<Categoria> categorias = categoriaRepository.findAll();
         criarPrestador("Joao Eletricista", "joao@bicocerto.com.br", senha, "Capao Redondo",
-                categoria(categorias, "Eletrica"), "Eletricista ha 12 anos, atendo emergencias no mesmo dia.");
+                categoria(categorias, "Eletrica"), "Eletricista ha 12 anos, atendo emergencias no mesmo dia.",
+                "Capao Redondo e bairros proximos", "Segunda a sabado, das 8h as 18h", true);
         criarPrestador("Carlos Encanador", "carlos@bicocerto.com.br", senha, "Capao Redondo",
-                categoria(categorias, "Encanamento"), "Conserto vazamentos, desentupo pias e troco registros.");
+                categoria(categorias, "Encanamento"), "Conserto vazamentos, desentupo pias e troco registros.",
+                "Capao Redondo e bairros proximos", "Segunda a sabado, das 8h as 18h", true);
         criarPrestador("Ana Diarista", "ana@bicocerto.com.br", senha, "Jardim Angela",
-                categoria(categorias, "Limpeza"), "Faxina completa e pos-obra com material proprio.");
+                categoria(categorias, "Limpeza"), "Faxina completa e pos-obra com material proprio.",
+                "Jardim Angela e Capao Redondo", "Segunda a sexta, das 7h as 17h", false);
 
         log.info("Usuarios de teste criados (admin, maria, pedro, joao, carlos, ana)");
     }
 
     private void criarPrestador(String nome, String email, String senha, String bairro, Categoria categoria,
-                                String descricao) {
+                                String descricao, String regiao, String disponibilidade, boolean verificado) {
         Usuario usuario = usuarioRepository.save(new Usuario(nome, email, senha, "(11) 93333-3333", bairro,
                 Papel.PRESTADOR));
-        prestadorRepository.save(new Prestador(usuario, categoria, descricao));
+        Prestador prestador = new Prestador(usuario, categoria, descricao);
+        prestador.setRegiaoAtendimento(regiao);
+        prestador.setDisponibilidade(disponibilidade);
+        prestador.setVerificado(verificado);
+        prestadorRepository.save(prestador);
     }
 
     private Categoria categoria(List<Categoria> categorias, String nome) {

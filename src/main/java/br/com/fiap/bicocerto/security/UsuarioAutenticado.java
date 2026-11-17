@@ -17,6 +17,7 @@ public class UsuarioAutenticado implements UserDetails {
     private final String email;
     private final String senha;
     private final Papel papel;
+    private final boolean ativo;
 
     public UsuarioAutenticado(Usuario usuario) {
         this.id = usuario.getId();
@@ -24,6 +25,7 @@ public class UsuarioAutenticado implements UserDetails {
         this.email = usuario.getEmail();
         this.senha = usuario.getSenha();
         this.papel = usuario.getPapel();
+        this.ativo = usuario.isAtivo();
     }
 
     public Long getId() { return id; }
@@ -40,4 +42,8 @@ public class UsuarioAutenticado implements UserDetails {
 
     @Override
     public String getUsername() { return email; }
+
+    /** Conta excluida nao autentica mais. */
+    @Override
+    public boolean isEnabled() { return ativo; }
 }

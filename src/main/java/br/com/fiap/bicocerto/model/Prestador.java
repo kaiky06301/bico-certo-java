@@ -24,6 +24,15 @@ public class Prestador {
     @Column(length = 500)
     private String descricao;
 
+    @Column(name = "regiao_atendimento", length = 200)
+    private String regiaoAtendimento;
+
+    @Column(length = 200)
+    private String disponibilidade;
+
+    @Column(nullable = false)
+    private boolean verificado;
+
     @Column(name = "nota_media", nullable = false, precision = 3, scale = 2)
     private BigDecimal notaMedia = BigDecimal.ZERO;
 
@@ -52,6 +61,12 @@ public class Prestador {
     public void setCategoria(Categoria categoria) { this.categoria = categoria; }
     public String getDescricao() { return descricao; }
     public void setDescricao(String descricao) { this.descricao = descricao; }
+    public String getRegiaoAtendimento() { return regiaoAtendimento; }
+    public void setRegiaoAtendimento(String regiaoAtendimento) { this.regiaoAtendimento = regiaoAtendimento; }
+    public String getDisponibilidade() { return disponibilidade; }
+    public void setDisponibilidade(String disponibilidade) { this.disponibilidade = disponibilidade; }
+    public boolean isVerificado() { return verificado; }
+    public void setVerificado(boolean verificado) { this.verificado = verificado; }
     public BigDecimal getNotaMedia() { return notaMedia; }
     public int getTotalAvaliacoes() { return totalAvaliacoes; }
 }

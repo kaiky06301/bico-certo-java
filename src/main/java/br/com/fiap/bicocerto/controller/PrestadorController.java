@@ -4,6 +4,7 @@ import br.com.fiap.bicocerto.dto.AvaliacaoResponse;
 import br.com.fiap.bicocerto.dto.PaginaResponse;
 import br.com.fiap.bicocerto.dto.PrestadorPerfilRequest;
 import br.com.fiap.bicocerto.dto.PrestadorResponse;
+import br.com.fiap.bicocerto.dto.VerificacaoRequest;
 import br.com.fiap.bicocerto.security.UsuarioAutenticado;
 import br.com.fiap.bicocerto.service.AvaliacaoService;
 import br.com.fiap.bicocerto.service.PrestadorService;
@@ -45,6 +46,19 @@ public class PrestadorController {
     @Operation(summary = "Detalhe de um prestador")
     public PrestadorResponse detalhar(@PathVariable Long id) {
         return prestadorService.detalhar(id);
+    }
+
+    @GetMapping("/usuario/{usuarioId}")
+    @Operation(summary = "Perfil publico do prestador a partir do id do usuario (o modulo .NET guarda esse id)")
+    public PrestadorResponse porUsuario(@PathVariable Long usuarioId) {
+        return prestadorService.doUsuarioPublico(usuarioId);
+    }
+
+    @PatchMapping("/{id}/verificacao")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Concede ou retira o selo 'Verificado pelo Bico Certo' (ADMIN, depois de conferir documentos)")
+    public PrestadorResponse verificar(@PathVariable Long id, @RequestBody @Valid VerificacaoRequest request) {
+        return prestadorService.definirVerificacao(id, request.verificado());
     }
 
     @GetMapping("/{id}/avaliacoes")
