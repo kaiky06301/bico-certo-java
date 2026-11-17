@@ -111,4 +111,16 @@ class TriagemServiceTest {
         assertThat(TriagemService.pontoDaFaixa(eletrica, 0.4)).isEqualByComparingTo("190.00");
         assertThat(TriagemService.pontoDaFaixa(eletrica, 1.0)).isEqualByComparingTo("350.00");
     }
+
+    @Test
+    void triagemPorRegrasReconheceOsServicosNovos() {
+        Categoria mecanico = new Categoria("Mecânico", "Carro ou moto", new java.math.BigDecimal("80.00"), new java.math.BigDecimal("600.00"));
+        Categoria pedreiro = new Categoria("Pedreiro", "Reboco e piso", new java.math.BigDecimal("150.00"), new java.math.BigDecimal("1500.00"));
+        List<Categoria> todas = List.of(eletrica, encanamento, pequenosReparos, mecanico, pedreiro);
+
+        assertThat(TriagemService.triarPorRegras("Meu carro não pega, acho que é a bateria", todas).categoria())
+                .isSameAs(mecanico);
+        assertThat(TriagemService.triarPorRegras("Preciso assentar piso e fazer o reboco do muro", todas).categoria())
+                .isSameAs(pedreiro);
+    }
 }

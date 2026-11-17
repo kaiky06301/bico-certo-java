@@ -55,7 +55,13 @@ public class TriagemService {
             "montagem de moveis", List.of("montar", "montagem", "guarda-roupa", "guarda roupa", "armario", "cama",
                     "rack", "estante", "movel", "moveis"),
             "pequenos reparos", List.of("prateleira", "cortina", "suporte", "tv", "fechadura", "porta", "reparo",
-                    "furo", "parafuso"));
+                    "furo", "parafuso"),
+            "pedreiro", List.of("pedreiro", "reboco", "piso", "azulejo", "rejunte", "contrapiso", "cimento", "muro",
+                    "rachadura", "trinca", "tijolo", "laje", "alvenaria", "reforma"),
+            "marceneiro", List.of("marceneiro", "marcenaria", "madeira", "empenad", "gaveta", "dobradica", "verniz",
+                    "sob medida", "mesa", "cadeira"),
+            "mecanico", List.of("mecanico", "carro", "moto", "motor", "bateria", "oleo", "freio", "pneu",
+                    "embreagem", "radiador", "nao pega"));
 
     private final ChatClient chatClient;
     private final CategoriaService categoriaService;

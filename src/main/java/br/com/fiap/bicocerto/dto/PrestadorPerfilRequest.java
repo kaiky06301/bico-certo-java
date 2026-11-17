@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
- * Perfil profissional. categoriaId = servico principal; outrasCategoriaIds = outros servicos que tambem faz (ate 2).
+ * Perfil profissional. categoriaId = servico principal; outrasCategoriaIds = outros servicos que tambem faz (sem limite).
  * diasAtendimento usa SEG, TER, QUA, QUI, SEX, SAB, DOM; horarios no formato HH:mm.
  */
 public record PrestadorPerfilRequest(
@@ -20,7 +20,7 @@ public record PrestadorPerfilRequest(
         @Size(max = 200, message = "A disponibilidade deve ter até 200 caracteres") String disponibilidade,
         @NotBlank(message = "Informe o bairro") @Size(max = 80) String bairro,
         @Pattern(regexp = "^[0-9()+\\- ]{8,20}$", message = "Telefone inválido") String telefone,
-        @Size(max = 2, message = "Escolha no máximo 3 serviços no total") List<Long> outrasCategoriaIds,
+        List<Long> outrasCategoriaIds,
         @Min(value = 0, message = "Tempo de experiência inválido") @Max(value = 60, message = "Tempo de experiência inválido")
         Integer anosExperiencia,
         @Size(max = 200, message = "As especialidades devem ter até 200 caracteres") String especialidades,

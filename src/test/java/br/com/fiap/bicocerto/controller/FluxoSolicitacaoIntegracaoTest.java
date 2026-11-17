@@ -104,7 +104,7 @@ class FluxoSolicitacaoIntegracaoTest {
     void categoriasSaoPublicasParaOCadastroDoPrestador() throws Exception {
         mockMvc.perform(get("/api/categorias"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElementos").value(6));
+                .andExpect(jsonPath("$.totalElementos").value(9));
     }
 
     @Test
@@ -133,7 +133,7 @@ class FluxoSolicitacaoIntegracaoTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.conteudo.length()").value(2))
                 .andExpect(jsonPath("$.tamanho").value(2))
-                .andExpect(jsonPath("$.totalElementos").value(6));
+                .andExpect(jsonPath("$.totalElementos").value(9));
     }
 
     @Test
