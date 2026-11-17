@@ -64,6 +64,7 @@
 - Só é possível avaliar um pedido **CONCLUÍDO**, uma única vez. A nota média do prestador é recalculada a cada avaliação.
 - Excluir um pedido é uma **exclusão lógica**: o status vira `CANCELADA` e o histórico é mantido.
 - **Exclusão de conta (LGPD):** pede a senha, é bloqueada se houver pedido ou serviço em andamento e **apaga os dados pessoais** (anonimização). O histórico de pedidos e avaliações de outras pessoas continua íntegro, e o login e o token antigo deixam de funcionar.
+- **Serviços feitos:** o perfil do prestador traz `servicosConcluidos` (quantos pedidos ele já concluiu pelo Bico Certo), ao lado da nota média e do total de avaliações.
 - **Fotos e informação adicional:** o pedido aceita até **3 fotos** (JPEG/PNG em base64, até 2 MB cada) e uma observação opcional, que também entra no texto analisado pela IA. A lista de pedidos traz só `quantidadeFotos`; as imagens vêm em `GET /api/solicitacoes/{id}/fotos`, que o prestador de outra categoria não acessa (403). Ao excluir a conta, as fotos são apagadas.
 - **Vários endereços** (casa, casa dos pais, trabalho): o cliente escolhe um ao criar o pedido. O pedido guarda o bairro e a rua; **antes da contratação o prestador vê só o bairro**, e a rua e o telefone são liberados quando o cliente aceita o orçamento (`PATCH /api/solicitacoes/{id}/contratacao`).
 - Só o **ADMIN** concede o selo de verificado; o prestador não consegue se autoverificar.

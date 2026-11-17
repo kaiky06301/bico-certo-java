@@ -39,6 +39,10 @@ public class Prestador {
     @Column(name = "total_avaliacoes", nullable = false)
     private int totalAvaliacoes;
 
+    /** Quantos servicos o prestador ja concluiu pelo Bico Certo (calculado na consulta). */
+    @org.hibernate.annotations.Formula("(select count(*) from solicitacoes s where s.prestador_id = id and s.status = 'CONCLUIDA')")
+    private int servicosConcluidos;
+
     protected Prestador() {
     }
 
@@ -69,4 +73,6 @@ public class Prestador {
     public void setVerificado(boolean verificado) { this.verificado = verificado; }
     public BigDecimal getNotaMedia() { return notaMedia; }
     public int getTotalAvaliacoes() { return totalAvaliacoes; }
+
+    public int getServicosConcluidos() { return servicosConcluidos; }
 }

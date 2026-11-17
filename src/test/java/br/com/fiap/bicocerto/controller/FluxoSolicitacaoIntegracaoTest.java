@@ -185,7 +185,8 @@ class FluxoSolicitacaoIntegracaoTest {
                         .filter(c -> c.getNome().equals("Elétrica")).findFirst().orElseThrow().getId())
                         .header("Authorization", cliente))
                 .andExpect(jsonPath("$.conteudo[0].notaMedia").value(4.0))
-                .andExpect(jsonPath("$.conteudo[0].totalAvaliacoes").value(1));
+                .andExpect(jsonPath("$.conteudo[0].totalAvaliacoes").value(1))
+                .andExpect(jsonPath("$.conteudo[0].servicosConcluidos").value(1));
 
         verify(amqpTemplate, times(3)).convertAndSend(eq(RabbitConfig.EXCHANGE), eq(RabbitConfig.ROUTING_KEY), any(Object.class));
     }

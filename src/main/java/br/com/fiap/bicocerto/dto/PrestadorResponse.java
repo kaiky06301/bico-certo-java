@@ -16,6 +16,7 @@ public record PrestadorResponse(
         boolean verificado,
         BigDecimal notaMedia,
         int totalAvaliacoes,
+        int servicosConcluidos,
         Long usuarioId,
         LocalDateTime membroDesde) {
 
@@ -23,6 +24,6 @@ public record PrestadorResponse(
         return new PrestadorResponse(p.getId(), p.getUsuario().getNome(), p.getUsuario().getBairro(),
                 new TriagemResponse.CategoriaResumo(p.getCategoria().getId(), p.getCategoria().getNome()),
                 p.getDescricao(), p.getRegiaoAtendimento(), p.getDisponibilidade(), p.isVerificado(),
-                p.getNotaMedia(), p.getTotalAvaliacoes(), p.getUsuario().getId(), p.getUsuario().getCriadoEm());
+                p.getNotaMedia(), p.getTotalAvaliacoes(), p.getServicosConcluidos(), p.getUsuario().getId(), p.getUsuario().getCriadoEm());
     }
 }
