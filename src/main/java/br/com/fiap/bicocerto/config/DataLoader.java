@@ -64,23 +64,34 @@ public class DataLoader implements CommandLineRunner {
                 "(11) 92222-2222", "Jardim Ângela", Papel.CLIENTE));
 
         List<Categoria> categorias = categoriaRepository.findAll();
-        criarPrestador("João Eletricista", "joao@bicocerto.com.br", senha, "Capão Redondo",
+        List<String> segASab = List.of("SEG", "TER", "QUA", "QUI", "SEX", "SAB");
+        List<String> segASex = List.of("SEG", "TER", "QUA", "QUI", "SEX");
+        Prestador joao = criarPrestador("João Eletricista", "joao@bicocerto.com.br", senha, "Capão Redondo",
                 categoria(categorias, "Elétrica"), "Eletricista há 12 anos, atendo emergências no mesmo dia.",
-                "Capão Redondo e bairros próximos", "Segunda a sábado, das 8h às 18h", true);
-        criarPrestador("Roberto Alves", "roberto@bicocerto.com.br", senha, "Capão Redondo",
+                "Capão Redondo, Campo Limpo, Jardim Ângela", "Seg a sáb, das 08:00 às 18:00", true);
+        joao.definirExperiencia(12, "Chuveiros, quadros de luz, tomadas e disjuntores",
+                "Atendo emergências no mesmo dia e dou garantia de 90 dias");
+        joao.definirAtendimento(segASab, "08:00", "18:00", true);
+        Prestador roberto = criarPrestador("Roberto Alves", "roberto@bicocerto.com.br", senha, "Capão Redondo",
                 categoria(categorias, "Elétrica"), "Eletricista residencial, trabalho com garantia de 90 dias.",
-                "Capão Redondo e Campo Limpo", "Segunda a sexta, das 9h às 18h", false);
-        criarPrestador("Carlos Encanador", "carlos@bicocerto.com.br", senha, "Capão Redondo",
+                "Capão Redondo, Campo Limpo", "Seg a sex, das 09:00 às 18:00", false);
+        roberto.definirExperiencia(6, "Instalação residencial e iluminação", "Garantia de 90 dias em todo serviço");
+        roberto.definirAtendimento(segASex, "09:00", "18:00", false);
+        Prestador carlos = criarPrestador("Carlos Encanador", "carlos@bicocerto.com.br", senha, "Capão Redondo",
                 categoria(categorias, "Encanamento"), "Conserto vazamentos, desentupo pias e troco registros.",
-                "Capão Redondo e bairros próximos", "Segunda a sábado, das 8h às 18h", true);
-        criarPrestador("Ana Diarista", "ana@bicocerto.com.br", senha, "Jardim Ângela",
+                "Capão Redondo, Jardim São Luís", "Seg a sáb, das 08:00 às 18:00", true);
+        carlos.definirExperiencia(8, "Vazamentos, desentupimento e registros", null);
+        carlos.definirAtendimento(segASab, "08:00", "18:00", true);
+        Prestador ana = criarPrestador("Ana Diarista", "ana@bicocerto.com.br", senha, "Jardim Ângela",
                 categoria(categorias, "Limpeza"), "Faxina completa e pós-obra com material próprio.",
-                "Jardim Ângela e Capão Redondo", "Segunda a sexta, das 7h às 17h", false);
+                "Jardim Ângela, Capão Redondo", "Seg a sex, das 07:00 às 17:00", false);
+        ana.definirExperiencia(5, "Faxina completa e limpeza pós-obra", "Levo o material de limpeza");
+        ana.definirAtendimento(segASex, "07:00", "17:00", false);
 
         log.info("Usuarios de teste criados (admin, maria, pedro, joao, roberto, carlos, ana)");
     }
 
-    private void criarPrestador(String nome, String email, String senha, String bairro, Categoria categoria,
+    private Prestador criarPrestador(String nome, String email, String senha, String bairro, Categoria categoria,
                                 String descricao, String regiao, String disponibilidade, boolean verificado) {
         Usuario usuario = usuarioRepository.save(new Usuario(nome, email, senha, "(11) 93333-3333", bairro,
                 Papel.PRESTADOR));
@@ -88,7 +99,7 @@ public class DataLoader implements CommandLineRunner {
         prestador.setRegiaoAtendimento(regiao);
         prestador.setDisponibilidade(disponibilidade);
         prestador.setVerificado(verificado);
-        prestadorRepository.save(prestador);
+        return prestadorRepository.save(prestador);
     }
 
     private Categoria categoria(List<Categoria> categorias, String nome) {

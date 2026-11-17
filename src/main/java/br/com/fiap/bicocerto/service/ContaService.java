@@ -10,6 +10,7 @@ import br.com.fiap.bicocerto.model.StatusSolicitacao;
 import br.com.fiap.bicocerto.model.Usuario;
 import br.com.fiap.bicocerto.repository.AvaliacaoRepository;
 import br.com.fiap.bicocerto.repository.EnderecoRepository;
+import br.com.fiap.bicocerto.repository.PrestadorFotoRepository;
 import br.com.fiap.bicocerto.repository.PrestadorRepository;
 import br.com.fiap.bicocerto.repository.SolicitacaoFotoRepository;
 import br.com.fiap.bicocerto.repository.SolicitacaoRepository;
@@ -33,13 +34,15 @@ public class ContaService {
     private final AvaliacaoRepository avaliacaoRepository;
     private final EnderecoRepository enderecoRepository;
     private final SolicitacaoFotoRepository fotoRepository;
+    private final PrestadorFotoRepository galeriaRepository;
     private final PasswordEncoder passwordEncoder;
 
     public ContaService(UsuarioRepository usuarioRepository, PrestadorRepository prestadorRepository,
                         SolicitacaoRepository solicitacaoRepository, AvaliacaoRepository avaliacaoRepository,
                         EnderecoRepository enderecoRepository, PasswordEncoder passwordEncoder,
-                        SolicitacaoFotoRepository fotoRepository) {
+                        SolicitacaoFotoRepository fotoRepository, PrestadorFotoRepository galeriaRepository) {
         this.fotoRepository = fotoRepository;
+        this.galeriaRepository = galeriaRepository;
         this.usuarioRepository = usuarioRepository;
         this.prestadorRepository = prestadorRepository;
         this.solicitacaoRepository = solicitacaoRepository;
@@ -99,6 +102,11 @@ public class ContaService {
         enderecoRepository.deleteByUsuarioId(usuarioId);
         solicitacaoRepository.limparEnderecosDoCliente(usuarioId);
         fotoRepository.apagarDoCliente(usuarioId);
+        // Prestador: foto de perfil e galeria podem identificar a pessoa, entao saem junto (LGPD)
+        prestadorRepository.findByUsuarioId(usuarioId).ifPresent(p -> {
+            p.setFoto(null);
+            galeriaRepository.deleteByPrestadorId(p.getId());
+        });
         usuario.anonimizar(passwordEncoder.encode(UUID.randomUUID().toString()));
     }
 

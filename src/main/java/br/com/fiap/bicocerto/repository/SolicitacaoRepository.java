@@ -25,7 +25,7 @@ public interface SolicitacaoRepository extends JpaRepository<Solicitacao, Long> 
     @org.springframework.data.jpa.repository.Query("update Solicitacao s set s.endereco = null where s.cliente.id = :clienteId")
     void limparEnderecosDoCliente(@org.springframework.data.repository.query.Param("clienteId") Long clienteId);
 
-    Page<Solicitacao> findByCategoriaIdAndStatus(Long categoriaId, StatusSolicitacao status, Pageable pageable);
+    Page<Solicitacao> findByCategoriaIdInAndStatus(java.util.Collection<Long> categoriaIds, StatusSolicitacao status, Pageable pageable);
 
     Page<Solicitacao> findByPrestadorId(Long prestadorId, Pageable pageable);
 

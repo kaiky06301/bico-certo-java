@@ -42,6 +42,7 @@ class ContaIntegracaoTest {
     @Autowired private AvaliacaoRepository avaliacaoRepository;
     @Autowired private NotificacaoRepository notificacaoRepository;
     @Autowired private EnderecoRepository enderecoRepository;
+    @Autowired private PrestadorFotoRepository prestadorFotoRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
     @MockitoBean private ChatModel chatModel;
@@ -53,6 +54,7 @@ class ContaIntegracaoTest {
     @BeforeEach
     void preparar() {
         enderecoRepository.deleteAll();
+        prestadorFotoRepository.deleteAll();
         notificacaoRepository.deleteAll();
         avaliacaoRepository.deleteAll();
         solicitacaoRepository.deleteAll();
@@ -240,5 +242,65 @@ class ContaIntegracaoTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return "Bearer " + jsonMapper.readTree(corpo).get("accessToken").asString();
+    }
+
+    @Test
+    void perfilProfissionalCompletoComHorariosFotoEGaleria() throws Exception {
+        String joao = token("joao@teste.com", SENHA);
+        var categoria = categoriaRepository.findAll().stream().filter(c -> c.getNome().equals("Elétrica")).findFirst().orElseThrow();
+        String base = "{\"categoriaId\":" + categoria.getId() + ",\"bairro\":\"Capao Redondo\",\"anosExperiencia\":12,"
+                + "\"especialidades\":\"Chuveiros e quadros\",\"diferenciais\":\"Garantia de 90 dias\","
+                + "\"diasAtendimento\":[\"SEG\",\"TER\",\"SAB\"],\"atendeEmergencia\":true,";
+
+        mockMvc.perform(put("/api/prestadores/me").header("Authorization", joao).contentType(MediaType.APPLICATION_JSON)
+                        .content(base + "\"horarioInicio\":\"18:00\",\"horarioFim\":\"08:00\"}"))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.mensagem").value("O horário de término deve ser depois do horário de início"));
+        mockMvc.perform(put("/api/prestadores/me").header("Authorization", joao).contentType(MediaType.APPLICATION_JSON)
+                        .content(base + "\"horarioInicio\":\"8h\",\"horarioFim\":\"18:00\"}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(put("/api/prestadores/me").header("Authorization", joao).contentType(MediaType.APPLICATION_JSON)
+                        .content(base + "\"horarioInicio\":\"08:00\",\"horarioFim\":\"18:00\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.anosExperiencia").value(12))
+                .andExpect(jsonPath("$.diasAtendimento[2]").value("SAB"))
+                .andExpect(jsonPath("$.atendeEmergencia").value(true));
+
+        String foto = "{\"imagem\":\"data:image/jpeg;base64,/9j/AAAA\"}";
+        mockMvc.perform(put("/api/prestadores/me/foto").header("Authorization", joao)
+                        .contentType(MediaType.APPLICATION_JSON).content(foto))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.foto").value("data:image/jpeg;base64,/9j/AAAA"));
+        mockMvc.perform(put("/api/prestadores/me/foto").header("Authorization", joao)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"imagem\":\"http://site/foto.jpg\"}"))
+                .andExpect(status().isBadRequest());
+
+        String trabalho = "{\"imagem\":\"data:image/png;base64,iVBORw0KGgo=\",\"legenda\":\"Quadro novo\"}";
+        for (int i = 0; i < 6; i++) {
+            mockMvc.perform(post("/api/prestadores/me/fotos").header("Authorization", joao)
+                            .contentType(MediaType.APPLICATION_JSON).content(trabalho))
+                    .andExpect(status().isCreated());
+        }
+        mockMvc.perform(post("/api/prestadores/me/fotos").header("Authorization", joao)
+                        .contentType(MediaType.APPLICATION_JSON).content(trabalho))
+                .andExpect(status().isUnprocessableContent());
+
+        String maria = token("maria@teste.com", SENHA);
+        String galeria = mockMvc.perform(get("/api/prestadores/{id}/fotos", prestadorId).header("Authorization", maria))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(6))
+                .andExpect(jsonPath("$[0].legenda").value("Quadro novo"))
+                .andReturn().getResponse().getContentAsString();
+        long fotoId = jsonMapper.readTree(galeria).get(0).get("id").asLong();
+        // cliente nao apaga foto de ninguem; o dono apaga a propria
+        mockMvc.perform(delete("/api/prestadores/me/fotos/{id}", fotoId).header("Authorization", maria))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/api/prestadores/me/fotos/{id}", fotoId).header("Authorization", joao))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/prestadores/usuario/{id}", prestadorUsuarioId).header("Authorization", maria))
+                .andExpect(jsonPath("$.quantidadeFotos").value(5))
+                .andExpect(jsonPath("$.foto").exists())
+                .andExpect(jsonPath("$.especialidades").value("Chuveiros e quadros"));
     }
 }

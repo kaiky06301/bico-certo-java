@@ -54,7 +54,7 @@ public class SolicitacaoService {
         String obs = vazioParaNulo(observacao);
         String texto = obs == null ? descricao.trim() : descricao.trim() + "\nInformacao adicional: " + obs;
         ResultadoTriagem resultado = triagemService.triar(texto);
-        long prestadores = prestadorRepository.findByCategoriaId(resultado.categoria().getId()).size();
+        long prestadores = prestadorRepository.contarQueAtendem(resultado.categoria().getId());
         return TriagemResponse.from(resultado, prestadores);
     }
 
@@ -81,11 +81,11 @@ public class SolicitacaoService {
         return solicitacaoRepository.findByClienteId(clienteId, pageable).map(SolicitacaoResponse::paraDono);
     }
 
-    /** Pedidos ABERTOS da categoria do prestador logado. */
+    /** Pedidos ABERTOS das categorias que o prestador logado atende (principal + outras). */
     public Page<SolicitacaoResponse> abertasParaPrestador(Long usuarioId, Pageable pageable) {
         Prestador prestador = prestadorDoUsuario(usuarioId);
         return solicitacaoRepository
-                .findByCategoriaIdAndStatus(prestador.getCategoria().getId(), StatusSolicitacao.ABERTA, pageable)
+                .findByCategoriaIdInAndStatus(prestador.idsDasCategorias(), StatusSolicitacao.ABERTA, pageable)
                 .map(SolicitacaoResponse::from);
     }
 
@@ -173,7 +173,7 @@ public class SolicitacaoService {
         Prestador prestador = prestadorDoUsuario(usuarioId);
         Solicitacao solicitacao = solicitacaoRepository.buscarParaAtualizar(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao " + id + " nao encontrada"));
-        if (!solicitacao.getCategoria().getId().equals(prestador.getCategoria().getId())) {
+        if (!prestador.atende(solicitacao.getCategoria().getId())) {
             throw new AcessoNegadoException("Este pedido nao e da sua categoria de servico");
         }
         if (solicitacao.getStatus() != StatusSolicitacao.ABERTA) {
@@ -201,7 +201,7 @@ public class SolicitacaoService {
                 && solicitacao.getPrestador() != null && solicitacao.getPrestador().getId().equals(prestador.getId())) {
             return SolicitacaoResponse.paraDono(solicitacao); // repeticao (internet instavel): nada muda
         }
-        if (!solicitacao.getCategoria().getId().equals(prestador.getCategoria().getId())) {
+        if (!prestador.atende(solicitacao.getCategoria().getId())) {
             throw new RegraNegocioException("O prestador contratado nao atende a categoria deste pedido");
         }
         if (solicitacao.getStatus() != StatusSolicitacao.ABERTA) {
@@ -275,7 +275,7 @@ public class SolicitacaoService {
                 Prestador prestador = prestadorDoUsuario(usuario.getId());
                 boolean ehDele = s.getPrestador() != null && s.getPrestador().getId().equals(prestador.getId());
                 boolean abertoNaCategoria = s.getStatus() == StatusSolicitacao.ABERTA
-                        && s.getCategoria().getId().equals(prestador.getCategoria().getId());
+                        && prestador.atende(s.getCategoria().getId());
                 if (!ehDele && !abertoNaCategoria) {
                     throw new AcessoNegadoException("Voce nao tem acesso a este pedido");
                 }

@@ -4,6 +4,8 @@ import br.com.fiap.bicocerto.dto.AvaliacaoResponse;
 import br.com.fiap.bicocerto.dto.PaginaResponse;
 import br.com.fiap.bicocerto.dto.PrestadorPerfilRequest;
 import br.com.fiap.bicocerto.dto.PrestadorResponse;
+import br.com.fiap.bicocerto.dto.TrabalhoFotoRequest;
+import br.com.fiap.bicocerto.dto.TrabalhoFotoResponse;
 import br.com.fiap.bicocerto.dto.VerificacaoRequest;
 import br.com.fiap.bicocerto.security.UsuarioAutenticado;
 import br.com.fiap.bicocerto.service.AvaliacaoService;
@@ -16,9 +18,12 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/prestadores")
@@ -77,9 +82,47 @@ public class PrestadorController {
 
     @PutMapping("/me")
     @PreAuthorize("hasRole('PRESTADOR')")
-    @Operation(summary = "Atualiza categoria, descricao, bairro e telefone do prestador logado")
+    @Operation(summary = "Atualiza o perfil profissional do prestador logado (servicos, experiencia, regiao e horarios)")
     public PrestadorResponse atualizarPerfil(@AuthenticationPrincipal UsuarioAutenticado usuario,
                                              @RequestBody @Valid PrestadorPerfilRequest request) {
         return prestadorService.atualizarMeuPerfil(usuario.getId(), request);
+    }
+
+    @PutMapping("/me/foto")
+    @PreAuthorize("hasRole('PRESTADOR')")
+    @Operation(summary = "Define a foto de perfil do prestador logado (data URI JPEG/PNG)")
+    public PrestadorResponse definirFoto(@AuthenticationPrincipal UsuarioAutenticado usuario,
+                                         @RequestBody @Valid TrabalhoFotoRequest request) {
+        return prestadorService.definirFoto(usuario.getId(), request.imagem());
+    }
+
+    @DeleteMapping("/me/foto")
+    @PreAuthorize("hasRole('PRESTADOR')")
+    @Operation(summary = "Remove a foto de perfil do prestador logado")
+    public PrestadorResponse removerFoto(@AuthenticationPrincipal UsuarioAutenticado usuario) {
+        return prestadorService.definirFoto(usuario.getId(), null);
+    }
+
+    @GetMapping("/{id}/fotos")
+    @Operation(summary = "Galeria de trabalhos realizados pelo prestador")
+    public List<TrabalhoFotoResponse> galeria(@PathVariable Long id) {
+        return prestadorService.galeria(id);
+    }
+
+    @PostMapping("/me/fotos")
+    @PreAuthorize("hasRole('PRESTADOR')")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Adiciona uma foto de trabalho realizado na galeria (ate 6)")
+    public TrabalhoFotoResponse adicionarFoto(@AuthenticationPrincipal UsuarioAutenticado usuario,
+                                              @RequestBody @Valid TrabalhoFotoRequest request) {
+        return prestadorService.adicionarFotoNaGaleria(usuario.getId(), request);
+    }
+
+    @DeleteMapping("/me/fotos/{fotoId}")
+    @PreAuthorize("hasRole('PRESTADOR')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Remove uma foto da galeria do prestador logado")
+    public void removerFotoDaGaleria(@AuthenticationPrincipal UsuarioAutenticado usuario, @PathVariable Long fotoId) {
+        prestadorService.removerFotoDaGaleria(usuario.getId(), fotoId);
     }
 }

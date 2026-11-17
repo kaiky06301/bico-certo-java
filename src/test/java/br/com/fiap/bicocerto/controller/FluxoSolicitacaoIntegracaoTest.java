@@ -380,6 +380,39 @@ class FluxoSolicitacaoIntegracaoTest {
                 .andExpect(jsonPath("$.cliente.telefone").doesNotExist());
     }
 
+    @Test
+    void prestadorQueTambemFazOutroServicoRecebeOsPedidosDessaCategoria() throws Exception {
+        String resposta = mockMvc.perform(post("/api/solicitacoes").header("Authorization", token("cliente@teste.com"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"descricao\":\"A tomada da sala parou de funcionar\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long id = jsonMapper.readTree(resposta).get("id").asLong();
+        String carlos = token("encanador@teste.com");
+        var eletrica = categoriaRepository.findAll().stream().filter(c -> c.getNome().equals("Elétrica")).findFirst().orElseThrow();
+        var encanamento = categoriaRepository.findAll().stream().filter(c -> c.getNome().equals("Encanamento")).findFirst().orElseThrow();
+
+        mockMvc.perform(get("/api/solicitacoes/{id}", id).header("Authorization", carlos))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put("/api/prestadores/me").header("Authorization", carlos).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoriaId\":" + encanamento.getId() + ",\"outrasCategoriaIds\":[" + eletrica.getId() + "],"
+                                + "\"bairro\":\"Capao Redondo\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.categoria.nome").value("Encanamento"))
+                .andExpect(jsonPath("$.outrasCategorias[0].nome").value("Elétrica"));
+
+        mockMvc.perform(get("/api/solicitacoes/abertas").header("Authorization", carlos))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.conteudo[0].id").value(id));
+        mockMvc.perform(get("/api/solicitacoes/{id}", id).header("Authorization", carlos))
+                .andExpect(status().isOk());
+        // a busca de prestadores por categoria tambem encontra quem faz como servico extra
+        mockMvc.perform(get("/api/prestadores").param("categoriaId", String.valueOf(eletrica.getId()))
+                        .header("Authorization", token("cliente@teste.com")))
+                .andExpect(jsonPath("$.totalElementos").value(2));
+    }
+
     private void responderModelo(String json) {
         ChatResponse resposta = new ChatResponse(List.of(new Generation(new AssistantMessage(json))));
         when(chatModel.call(any(Prompt.class))).thenReturn(resposta);

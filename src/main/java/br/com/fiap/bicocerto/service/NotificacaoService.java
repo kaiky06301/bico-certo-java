@@ -142,7 +142,7 @@ public class NotificacaoService {
     }
 
     private void avisarPrestadores(Solicitacao s) {
-        List<Prestador> prestadores = prestadorRepository.findByCategoriaId(s.getCategoria().getId());
+        List<Prestador> prestadores = prestadorRepository.listarQueAtendem(s.getCategoria().getId());
         for (Prestador p : prestadores) {
             boolean mesmoBairro = p.getUsuario().getBairro().equalsIgnoreCase(s.getBairro());
             String mensagem = "Novo pedido de " + nomeCategoria(s) + (mesmoBairro ? " no seu bairro (" : " em ")

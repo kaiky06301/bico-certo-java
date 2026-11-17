@@ -299,7 +299,7 @@ erDiagram
     }
 ```
 
-As migrations ficam em `src/main/resources/db/migration`: a `V1__Create_tables.sql` cria as tabelas e a `V2__Insert_categorias.sql` carrega a **tabela de referência de preços**. A `V3__Perfil_e_conta.sql` acrescenta o perfil profissional e a exclusão de conta, a `V4__Enderecos.sql` cria os endereços salvos a `V5__Fotos_e_observacao.sql` acrescenta a informação adicional e as fotos do problema, a `V6__Cancelamento_e_acentos.sql` guarda o motivo do cancelamento e acentua os dados de exemplo, a `V7__Tipos_de_aviso.sql` dá tipo, valor e orçamento aos avisos e a `V8__Acentos_dos_avisos.sql` corrige o texto dos avisos antigos.
+As migrations ficam em `src/main/resources/db/migration`: a `V1__Create_tables.sql` cria as tabelas e a `V2__Insert_categorias.sql` carrega a **tabela de referência de preços**. A `V3__Perfil_e_conta.sql` acrescenta o perfil profissional e a exclusão de conta, a `V4__Enderecos.sql` cria os endereços salvos a `V5__Fotos_e_observacao.sql` acrescenta a informação adicional e as fotos do problema, a `V6__Cancelamento_e_acentos.sql` guarda o motivo do cancelamento e acentua os dados de exemplo, a `V7__Tipos_de_aviso.sql` dá tipo, valor e orçamento aos avisos a `V8__Acentos_dos_avisos.sql` corrige o texto dos avisos antigos e a `V9__Perfil_profissional_completo.sql` completa o perfil do prestador (foto, experiência, outros serviços, dias e horários de atendimento, emergências e galeria de trabalhos).
 
 ---
 
@@ -493,7 +493,10 @@ Todos usam `Authorization: Bearer <token>`, exceto login e cadastro. As listagen
 | GET | `/api/solicitacoes/{id}/fotos` | dono, prestador ou ADMIN | Fotos do problema (mesma regra de acesso do detalhe) |
 | GET | `/api/prestadores?categoriaId=&bairro=` | logado | Prestadores ordenados pela nota |
 | GET | `/api/prestadores/{id}/avaliacoes` | logado | Avaliações recebidas |
-| GET / PUT | `/api/prestadores/me` | PRESTADOR | Perfil profissional (serviço, descrição, região, disponibilidade) |
+| GET / PUT | `/api/prestadores/me` | PRESTADOR | Perfil profissional: serviço principal + até 2 outros (`outrasCategoriaIds`, recebe pedidos de todos), anos de experiência, especialidades, diferenciais, bairros atendidos, dias (`SEG`…`DOM`), horário de início/fim (`HH:mm`, término depois do início ou 422) e se atende emergências |
+| PUT / DELETE | `/api/prestadores/me/foto` | PRESTADOR | Define ou remove a foto de perfil (data URI JPEG/PNG) |
+| GET | `/api/prestadores/{id}/fotos` | logado | Galeria de trabalhos realizados |
+| POST / DELETE | `/api/prestadores/me/fotos[/{fotoId}]` | PRESTADOR | Adiciona (até 6, depois 422) ou apaga foto da própria galeria |
 | GET | `/api/prestadores/usuario/{usuarioId}` | logado | Perfil público do prestador pelo id do usuário (o id que o módulo .NET guarda) |
 | PATCH | `/api/prestadores/{id}/verificacao` | ADMIN | Concede ou retira o selo "Verificado pelo Bico Certo" |
 | GET / PUT | `/api/conta` | logado | Dados pessoais do usuário logado |
@@ -555,7 +558,7 @@ curl -X PATCH http://localhost:8080/api/solicitacoes/1/assumir -H "Authorization
 
 ## 11. Testes (JUnit + Postman)
 
-### Automatizados (JUnit 5, 31 testes)
+### Automatizados (JUnit 5, 33 testes)
 
 ```bash
 ./mvnw test
@@ -566,8 +569,8 @@ Os testes rodam em **H2**, com as **mesmas migrations do Flyway**. O modelo de I
 |---|---|
 | `TriagemServiceTest` (9) | Normalização da resposta da IA, guardrails de categoria e urgência, cálculo do preço justo e triagem por regras |
 | `PrestadorTest` (1) | Cálculo da nota média |
-| `ContaIntegracaoTest` (6) | Endereços (principal automático, troca de principal, validação, endereço de outro usuário 404, exclusão promovendo o próximo), pedido em outro endereço com a rua escondida do prestador até a contratação, ver e editar os próprios dados (400 na validação), troca de senha exigindo a atual, exclusão com senha que bloqueia login e token antigo, perfil profissional e perfil público pelo id do usuário, selo de verificado só pelo ADMIN |
-| `FluxoSolicitacaoIntegracaoTest` (15) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade, IA fora do ar, fotos e observação (quem pode ver, limite de 3, formato inválido, editar mantendo ou removendo fotos) observação usada na triagem motivo do cancelamento (400 acima de 200 caracteres) e avisos vindos do .NET (403 para quem não participa do pedido, 422 para destinatário de fora, filtro por lida, marcar todas, excluir e limpar lidas) |
+| `ContaIntegracaoTest` (7) | Endereços (principal automático, troca de principal, validação, endereço de outro usuário 404, exclusão promovendo o próximo), pedido em outro endereço com a rua escondida do prestador até a contratação, ver e editar os próprios dados (400 na validação), troca de senha exigindo a atual, exclusão com senha que bloqueia login e token antigo, perfil profissional e perfil público pelo id do usuário, selo de verificado só pelo ADMIN, perfil completo (horário inválido 400, término antes do início 422, foto de perfil, galeria com limite de 6, cliente não apaga foto de ninguém) |
+| `FluxoSolicitacaoIntegracaoTest` (16) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade, IA fora do ar, fotos e observação (quem pode ver, limite de 3, formato inválido, editar mantendo ou removendo fotos) observação usada na triagem motivo do cancelamento (400 acima de 200 caracteres) e avisos vindos do .NET (403 para quem não participa do pedido, 422 para destinatário de fora, filtro por lida, marcar todas, excluir e limpar lidas) e prestador que marca um segundo serviço passa a ver e receber os pedidos dessa categoria |
 
 ### Postman
 
