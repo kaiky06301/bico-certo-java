@@ -7,6 +7,8 @@
 |---|---|
 | **Repositório** | https://github.com/kaiky06301/bico-certo-java |
 | **Vídeo pitch (até 5 min)** | `LINK_DO_VIDEO` |
+| **App mobile (consome esta API)** | https://github.com/kaiky06301/bico-certo-mobile |
+| **Módulo .NET (orçamentos e contratação)** | https://github.com/kaiky06301/bico-certo-dotnet |
 | **Swagger (local)** | http://localhost:8080/swagger-ui.html |
 | **Deploy** | Não há deploy desta API (roda localmente com Docker e Ollama) |
 | **Arquitetura distribuída (requisito 5)** | **Opção A: RabbitMQ**, com evento publicado e consumido de forma assíncrona |
