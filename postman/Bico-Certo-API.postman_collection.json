@@ -377,13 +377,19 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/categorias",
+              "raw": "{{baseUrl}}/api/categorias?size=50",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "categorias"
+              ],
+              "query": [
+                {
+                  "key": "size",
+                  "value": "50"
+                }
               ]
             },
             "auth": {
@@ -396,7 +402,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Inclui Pedreiro, Marceneiro e Mecânico\", () => { const nomes = pm.response.json().conteudo.map(c => c.nome); [\"Pedreiro\",\"Marceneiro\",\"Mecânico\"].forEach(n => pm.expect(nomes).to.include(n)); });"
                 ]
               }
             }
@@ -726,7 +733,7 @@
                 "exec": [
                   "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
                   "const r = pm.response.json();",
-                  "pm.test(\"Categoria Eletrica\", () => pm.expect(r.categoria.nome).to.eql(\"Eletrica\"));",
+                  "pm.test(\"Categoria Elétrica\", () => pm.expect(r.categoria.nome).to.eql(\"Elétrica\"));",
                   "pm.test(\"Urgencia ALTA\", () => pm.expect(r.urgencia).to.eql(\"ALTA\"));"
                 ]
               }
@@ -765,7 +772,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"descricao\": \"O interruptor do quarto esta dando choque quando encosto\"\n}"
+              "raw": "{\n  \"descricao\": \"O interruptor do quarto esta dando choque quando encosto\",\n  \"observacao\": \"Comecou depois da chuva de ontem.\",\n  \"fotos\": [\n    \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==\"\n  ]\n}"
             }
           },
           "event": [
@@ -778,7 +785,8 @@
                   "const r = pm.response.json();",
                   "pm.collectionVariables.set(\"solicitacaoId\", r.id);",
                   "pm.test(\"Status ABERTA\", () => pm.expect(r.status).to.eql(\"ABERTA\"));",
-                  "pm.test(\"Telefone protegido\", () => pm.expect(r.cliente.telefone).to.be.oneOf([null, undefined]));"
+                  "pm.test(\"Telefone protegido\", () => pm.expect(r.cliente.telefone).to.be.oneOf([null, undefined]));",
+                  "pm.test(\"Guarda observacao e 1 foto\", () => { pm.expect(r.observacao).to.include(\"chuva\"); pm.expect(r.quantidadeFotos).to.eql(1); });"
                 ]
               }
             }
@@ -963,6 +971,87 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eletricista ve as fotos do pedido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/solicitacoes/{{solicitacaoId}}/fotos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "solicitacoes",
+                "{{solicitacaoId}}",
+                "fotos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEletricista}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"1 foto em data URI\", () => { const f = pm.response.json(); pm.expect(f.length).to.eql(1); pm.expect(f[0].imagem).to.match(/^data:image\\/jpeg;base64,/); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Encanador nao ve as fotos de pedido de eletrica (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/solicitacoes/{{solicitacaoId}}/fotos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "solicitacoes",
+                "{{solicitacaoId}}",
+                "fotos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEncanador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));"
                 ]
               }
             }
@@ -1371,9 +1460,54 @@
           ]
         },
         {
-          "name": "Cancelar pedido (exclusao logica)",
+          "name": "Cancelar pedido com motivo (exclusao logica)",
           "request": {
             "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/solicitacoes/{{pedidoCancelar}}?motivo=Resolvi sozinho",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "solicitacoes",
+                "{{pedidoCancelar}}"
+              ],
+              "query": [
+                {
+                  "key": "motivo",
+                  "value": "Resolvi sozinho"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pedido cancelado guarda o motivo",
+          "request": {
+            "method": "GET",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/solicitacoes/{{pedidoCancelar}}",
@@ -1403,7 +1537,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test(\"CANCELADA com motivo\", () => { pm.expect(s.status).to.eql(\"CANCELADA\"); pm.expect(s.motivoCancelamento).to.eql(\"Resolvi sozinho\"); });"
                 ]
               }
             }
@@ -1759,7 +1895,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"categoriaId\": 1,\n  \"descricao\": \"Eletricista ha 12 anos, atendo emergencias no mesmo dia.\",\n  \"regiaoAtendimento\": \"Capao Redondo e bairros proximos\",\n  \"disponibilidade\": \"Segunda a sabado, das 8h as 18h\",\n  \"bairro\": \"Capao Redondo\",\n  \"telefone\": \"(11) 93333-3333\"\n}"
+              "raw": "{\n  \"categoriaId\": 1,\n  \"outrasCategoriaIds\": [],\n  \"descricao\": \"Eletricista há 12 anos, atendo emergências no mesmo dia.\",\n  \"anosExperiencia\": 12,\n  \"especialidades\": \"Chuveiros, quadros de luz, tomadas e disjuntores\",\n  \"diferenciais\": \"Garantia de 90 dias\",\n  \"regiaoAtendimento\": \"Capão Redondo, Campo Limpo\",\n  \"diasAtendimento\": [\n    \"SEG\",\n    \"TER\",\n    \"QUA\",\n    \"QUI\",\n    \"SEX\",\n    \"SAB\"\n  ],\n  \"horarioInicio\": \"08:00\",\n  \"horarioFim\": \"18:00\",\n  \"atendeEmergencia\": true,\n  \"disponibilidade\": \"Seg a sáb, das 08:00 às 18:00\",\n  \"bairro\": \"Capão Redondo\",\n  \"telefone\": \"(11) 93333-3333\"\n}"
             }
           },
           "event": [
@@ -1772,7 +1908,279 @@
                   "const p = pm.response.json();",
                   "pm.collectionVariables.set(\"prestadorUsuarioId\", p.usuarioId);",
                   "pm.collectionVariables.set(\"prestadorId\", p.id);",
-                  "pm.test(\"Salva regiao e disponibilidade\", () => { pm.expect(p.regiaoAtendimento).to.include(\"Capao\"); pm.expect(p.disponibilidade).to.include(\"sabado\"); });"
+                  "pm.test(\"Salva experiencia, dias e horarios\", () => { pm.expect(p.anosExperiencia).to.eql(12); pm.expect(p.diasAtendimento).to.include(\"SAB\"); pm.expect(p.horarioFim).to.eql(\"18:00\"); pm.expect(p.atendeEmergencia).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Horario de termino antes do inicio (422)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestadores/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestadores",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEletricista}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoriaId\": 1,\n  \"outrasCategoriaIds\": [],\n  \"descricao\": \"Eletricista há 12 anos, atendo emergências no mesmo dia.\",\n  \"anosExperiencia\": 12,\n  \"especialidades\": \"Chuveiros, quadros de luz, tomadas e disjuntores\",\n  \"diferenciais\": \"Garantia de 90 dias\",\n  \"regiaoAtendimento\": \"Capão Redondo, Campo Limpo\",\n  \"diasAtendimento\": [\n    \"SEG\",\n    \"TER\",\n    \"QUA\",\n    \"QUI\",\n    \"SEX\",\n    \"SAB\"\n  ],\n  \"horarioInicio\": \"18:00\",\n  \"horarioFim\": \"08:00\",\n  \"atendeEmergencia\": true,\n  \"disponibilidade\": \"Seg a sáb, das 08:00 às 18:00\",\n  \"bairro\": \"Capão Redondo\",\n  \"telefone\": \"(11) 93333-3333\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Mensagem clara\", () => pm.expect(pm.response.json().mensagem).to.include(\"término\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prestador define a foto de perfil",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestadores/me/foto",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestadores",
+                "me",
+                "foto"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEletricista}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"imagem\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Foto salva\", () => pm.expect(pm.response.json().foto).to.match(/^data:image/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prestador adiciona foto de trabalho na galeria",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestadores/me/fotos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestadores",
+                "me",
+                "fotos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEletricista}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"imagem\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==\",\n  \"legenda\": \"Quadro de luz novo\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"fotoGaleriaId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cliente ve a galeria do prestador",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestadores/{{prestadorId}}/fotos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestadores",
+                "{{prestadorId}}",
+                "fotos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Tem a foto com legenda\", () => pm.expect(pm.response.json().map(f => f.legenda)).to.include(\"Quadro de luz novo\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cliente tenta apagar foto da galeria (403)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestadores/me/fotos/{{fotoGaleriaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestadores",
+                "me",
+                "fotos",
+                "{{fotoGaleriaId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prestador apaga a foto da galeria",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestadores/me/fotos/{{fotoGaleriaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestadores",
+                "me",
+                "fotos",
+                "{{fotoGaleriaId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEletricista}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
                 ]
               }
             }
@@ -2201,6 +2609,150 @@
           ]
         },
         {
+          "name": "Encanador passa a fazer eletrica tambem",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestadores/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestadores",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEncanador}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoriaId\": 2,\n  \"outrasCategoriaIds\": [\n    1\n  ],\n  \"bairro\": \"Capão Redondo\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test(\"Principal Encanamento + Eletrica\", () => { pm.expect(p.categoria.nome).to.eql(\"Encanamento\"); pm.expect(p.outrasCategorias.map(c => c.nome)).to.include(\"Elétrica\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Encanador agora recebe pedidos de eletrica",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/solicitacoes/abertas?size=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "solicitacoes",
+                "abertas"
+              ],
+              "query": [
+                {
+                  "key": "size",
+                  "value": "50"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEncanador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Ve o pedido de eletrica\", () => pm.expect(pm.response.json().conteudo.map(s => s.id)).to.include(Number(pm.collectionVariables.get(\"pedidoEndereco\"))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Encanador volta a fazer so encanamento",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestadores/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestadores",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEncanador}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoriaId\": 2,\n  \"outrasCategoriaIds\": [],\n  \"bairro\": \"Capão Redondo\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 e sem outros servicos\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().outrasCategorias.length).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Cliente registra o prestador contratado",
           "request": {
             "method": "PATCH",
@@ -2288,6 +2840,263 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Endereco liberado\", () => pm.expect(pm.response.json().endereco).to.include(\"Av. Brasil, 500\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Aviso do modulo .NET para o prestador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/solicitacoes/{{pedidoEndereco}}/avisos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "solicitacoes",
+                "{{pedidoEndereco}}",
+                "avisos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"CONTRATACAO\",\n  \"destinatarioId\": \"{{prestadorUsuarioId}}\",\n  \"mensagem\": \"Você foi contratado para o pedido.\",\n  \"valor\": 150.0\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Tipo CONTRATACAO com titulo\", () => { const n = pm.response.json(); pm.expect(n.tipo).to.eql(\"CONTRATACAO\"); pm.expect(n.titulo).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prestador ve avisos nao lidos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notificacoes?lida=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notificacoes"
+              ],
+              "query": [
+                {
+                  "key": "lida",
+                  "value": "false"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEletricista}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json().conteudo;",
+                  "pm.test(\"So nao lidos e tem a contratacao\", () => { pm.expect(lista.every(n => n.lida === false)).to.eql(true); pm.expect(lista.map(n => n.tipo)).to.include(\"CONTRATACAO\"); });",
+                  "pm.collectionVariables.set(\"notificacaoId\", lista[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prestador exclui um aviso",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notificacoes/{{notificacaoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notificacoes",
+                "{{notificacaoId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEletricista}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prestador marca todos como lidos",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notificacoes/lidas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notificacoes",
+                "lidas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEletricista}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Informa quantos\", () => pm.expect(pm.response.json().atualizadas).to.be.a(\"number\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prestador limpa os avisos lidos",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notificacoes/lidas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notificacoes",
+                "lidas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEletricista}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Informa quantos\", () => pm.expect(pm.response.json().removidas).to.be.a(\"number\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prestador contratado desiste e o pedido volta a ficar aberto",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/solicitacoes/{{pedidoEndereco}}/desistencia",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "solicitacoes",
+                "{{pedidoEndereco}}",
+                "desistencia"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEletricista}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ABERTA e sem prestador\", () => { const s = pm.response.json(); pm.expect(s.status).to.eql(\"ABERTA\"); pm.expect(s.prestador).to.be.oneOf([null, undefined]); });"
                 ]
               }
             }
@@ -2392,6 +3201,14 @@
     },
     {
       "key": "pedidoEndereco",
+      "value": ""
+    },
+    {
+      "key": "fotoGaleriaId",
+      "value": ""
+    },
+    {
+      "key": "notificacaoId",
       "value": ""
     }
   ]

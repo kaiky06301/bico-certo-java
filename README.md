@@ -651,7 +651,7 @@ Os testes rodam em **H2**, com as **mesmas migrations do Flyway**. O modelo de I
 
 ### Postman
 
-A coleção `postman/Bico-Certo-API.postman_collection.json` tem **52 requisições e 66 asserções** (inclui a pasta **4 - Perfil e conta**) e roda em ordem com o Runner. Os tokens são salvos automaticamente em variáveis. Também pode ser rodada pelo terminal, com a API no ar:
+A coleção `postman/Bico-Certo-API.postman_collection.json` tem **70 requisições e 98 asserções** (inclui fotos do pedido, cancelamento com motivo, avisos do módulo .NET, notificações, desistência, perfil profissional completo, galeria e prestador com mais de um serviço) e roda em ordem com o Runner. Os tokens são salvos automaticamente em variáveis. Também pode ser rodada pelo terminal, com a API no ar:
 
 ```bash
 npx newman run postman/Bico-Certo-API.postman_collection.json --delay-request 300
