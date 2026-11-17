@@ -11,6 +11,7 @@ import br.com.fiap.bicocerto.model.Usuario;
 import br.com.fiap.bicocerto.repository.AvaliacaoRepository;
 import br.com.fiap.bicocerto.repository.EnderecoRepository;
 import br.com.fiap.bicocerto.repository.PrestadorRepository;
+import br.com.fiap.bicocerto.repository.SolicitacaoFotoRepository;
 import br.com.fiap.bicocerto.repository.SolicitacaoRepository;
 import br.com.fiap.bicocerto.repository.UsuarioRepository;
 import org.springframework.data.domain.Page;
@@ -31,11 +32,14 @@ public class ContaService {
     private final SolicitacaoRepository solicitacaoRepository;
     private final AvaliacaoRepository avaliacaoRepository;
     private final EnderecoRepository enderecoRepository;
+    private final SolicitacaoFotoRepository fotoRepository;
     private final PasswordEncoder passwordEncoder;
 
     public ContaService(UsuarioRepository usuarioRepository, PrestadorRepository prestadorRepository,
                         SolicitacaoRepository solicitacaoRepository, AvaliacaoRepository avaliacaoRepository,
-                        EnderecoRepository enderecoRepository, PasswordEncoder passwordEncoder) {
+                        EnderecoRepository enderecoRepository, PasswordEncoder passwordEncoder,
+                        SolicitacaoFotoRepository fotoRepository) {
+        this.fotoRepository = fotoRepository;
         this.usuarioRepository = usuarioRepository;
         this.prestadorRepository = prestadorRepository;
         this.solicitacaoRepository = solicitacaoRepository;
@@ -94,6 +98,7 @@ public class ContaService {
         }
         enderecoRepository.deleteByUsuarioId(usuarioId);
         solicitacaoRepository.limparEnderecosDoCliente(usuarioId);
+        fotoRepository.apagarDoCliente(usuarioId);
         usuario.anonimizar(passwordEncoder.encode(UUID.randomUUID().toString()));
     }
 

@@ -64,6 +64,7 @@
 - Só é possível avaliar um pedido **CONCLUÍDO**, uma única vez. A nota média do prestador é recalculada a cada avaliação.
 - Excluir um pedido é uma **exclusão lógica**: o status vira `CANCELADA` e o histórico é mantido.
 - **Exclusão de conta (LGPD):** pede a senha, é bloqueada se houver pedido ou serviço em andamento e **apaga os dados pessoais** (anonimização). O histórico de pedidos e avaliações de outras pessoas continua íntegro, e o login e o token antigo deixam de funcionar.
+- **Fotos e informação adicional:** o pedido aceita até **3 fotos** (JPEG/PNG em base64, até 2 MB cada) e uma observação opcional, que também entra no texto analisado pela IA. A lista de pedidos traz só `quantidadeFotos`; as imagens vêm em `GET /api/solicitacoes/{id}/fotos`, que o prestador de outra categoria não acessa (403). Ao excluir a conta, as fotos são apagadas.
 - **Vários endereços** (casa, casa dos pais, trabalho): o cliente escolhe um ao criar o pedido. O pedido guarda o bairro e a rua; **antes da contratação o prestador vê só o bairro**, e a rua e o telefone são liberados quando o cliente aceita o orçamento (`PATCH /api/solicitacoes/{id}/contratacao`).
 - Só o **ADMIN** concede o selo de verificado; o prestador não consegue se autoverificar.
 - O **preço justo nunca vem direto do modelo de IA**: ele é calculado pelo sistema sobre a faixa de referência da categoria.
@@ -210,6 +211,14 @@ erDiagram
     SOLICITACOES ||--o{ NOTIFICACOES : "gera"
 
     USUARIOS ||--o{ ENDERECOS : "salva"
+    SOLICITACOES ||--o{ SOLICITACAO_FOTOS : "ate 3 fotos"
+    SOLICITACAO_FOTOS {
+        bigint id PK
+        bigint solicitacao_id FK
+        int ordem
+        text imagem "data URI base64"
+        timestamp criada_em
+    }
     ENDERECOS {
         bigint id PK
         bigint usuario_id FK
@@ -259,6 +268,7 @@ erDiagram
         varchar descricao
         varchar bairro
         varchar endereco "rua do servico"
+        varchar observacao "informacao adicional"
         varchar urgencia
         numeric preco_minimo
         numeric preco_maximo
@@ -287,7 +297,7 @@ erDiagram
     }
 ```
 
-As migrations ficam em `src/main/resources/db/migration`: a `V1__Create_tables.sql` cria as tabelas e a `V2__Insert_categorias.sql` carrega a **tabela de referência de preços**. A `V3__Perfil_e_conta.sql` acrescenta o perfil profissional e a exclusão de conta, e a `V4__Enderecos.sql` cria os endereços salvos.
+As migrations ficam em `src/main/resources/db/migration`: a `V1__Create_tables.sql` cria as tabelas e a `V2__Insert_categorias.sql` carrega a **tabela de referência de preços**. A `V3__Perfil_e_conta.sql` acrescenta o perfil profissional e a exclusão de conta, a `V4__Enderecos.sql` cria os endereços salvos e a `V5__Fotos_e_observacao.sql` acrescenta a informação adicional e as fotos do problema.
 
 ---
 
@@ -477,6 +487,7 @@ Todos usam `Authorization: Bearer <token>`, exceto login e cadastro. As listagen
 | PATCH | `/api/solicitacoes/{id}/concluir` | PRESTADOR | Conclui o serviço |
 | GET | `/api/solicitacoes?status=` | ADMIN | Todos os pedidos |
 | GET | `/api/solicitacoes/{id}` | dono, prestador ou ADMIN | Detalhe do pedido |
+| GET | `/api/solicitacoes/{id}/fotos` | dono, prestador ou ADMIN | Fotos do problema (mesma regra de acesso do detalhe) |
 | GET | `/api/prestadores?categoriaId=&bairro=` | logado | Prestadores ordenados pela nota |
 | GET | `/api/prestadores/{id}/avaliacoes` | logado | Avaliações recebidas |
 | GET / PUT | `/api/prestadores/me` | PRESTADOR | Perfil profissional (serviço, descrição, região, disponibilidade) |
@@ -536,7 +547,7 @@ curl -X PATCH http://localhost:8080/api/solicitacoes/1/assumir -H "Authorization
 
 ## 11. Testes (JUnit + Postman)
 
-### Automatizados (JUnit 5, 25 testes)
+### Automatizados (JUnit 5, 28 testes)
 
 ```bash
 ./mvnw test
@@ -548,7 +559,7 @@ Os testes rodam em **H2**, com as **mesmas migrations do Flyway**. O modelo de I
 | `TriagemServiceTest` (9) | Normalização da resposta da IA, guardrails de categoria e urgência, cálculo do preço justo e triagem por regras |
 | `PrestadorTest` (1) | Cálculo da nota média |
 | `ContaIntegracaoTest` (6) | Endereços (principal automático, troca de principal, validação, endereço de outro usuário 404, exclusão promovendo o próximo), pedido em outro endereço com a rua escondida do prestador até a contratação, ver e editar os próprios dados (400 na validação), troca de senha exigindo a atual, exclusão com senha que bloqueia login e token antigo, perfil profissional e perfil público pelo id do usuário, selo de verificado só pelo ADMIN |
-| `FluxoSolicitacaoIntegracaoTest` (9) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade e IA fora do ar |
+| `FluxoSolicitacaoIntegracaoTest` (12) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade, IA fora do ar, fotos e observação (quem pode ver, limite de 3, formato inválido, editar mantendo ou removendo fotos) e observação usada na triagem |
 
 ### Postman
 

@@ -38,7 +38,7 @@ public class SolicitacaoController {
     @PreAuthorize("hasRole('CLIENTE')")
     @Operation(summary = "Previa da triagem com IA (categoria, urgencia e preco justo) sem criar o pedido")
     public TriagemResponse triagem(@RequestBody @Valid TriagemRequest request) {
-        return solicitacaoService.simularTriagem(request.descricao());
+        return solicitacaoService.simularTriagem(request.descricao(), request.observacao());
     }
 
     @PostMapping
@@ -87,6 +87,12 @@ public class SolicitacaoController {
     @Operation(summary = "Detalhe do pedido (dono, prestador da categoria/atendimento ou ADMIN)")
     public SolicitacaoResponse buscar(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado usuario) {
         return solicitacaoService.buscar(id, usuario);
+    }
+
+    @GetMapping("/{id}/fotos")
+    @Operation(summary = "Fotos do problema (mesmas regras de acesso do detalhe do pedido)")
+    public java.util.List<FotoResponse> fotos(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado usuario) {
+        return solicitacaoService.fotos(id, usuario);
     }
 
     @PutMapping("/{id}")

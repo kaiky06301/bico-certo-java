@@ -217,6 +217,71 @@ class FluxoSolicitacaoIntegracaoTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void pedidoComObservacaoEFotosSoAparecemParaQuemPodeVerOPedido() throws Exception {
+        String cliente = token("cliente@teste.com");
+        String foto = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD";
+        String resposta = mockMvc.perform(post("/api/solicitacoes").header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"descricao\":\"A tomada da sala esta soltando faiscas\","
+                                + "\"observacao\":\"Acontece quando ligo o ferro de passar\","
+                                + "\"fotos\":[\"" + foto + "\",\"" + foto + "\"]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.observacao").value("Acontece quando ligo o ferro de passar"))
+                .andExpect(jsonPath("$.quantidadeFotos").value(2))
+                .andReturn().getResponse().getContentAsString();
+        long id = jsonMapper.readTree(resposta).get("id").asLong();
+
+        // a lista de pedidos traz so a quantidade; as imagens vem no endpoint proprio
+        mockMvc.perform(get("/api/solicitacoes/abertas").header("Authorization", token("eletricista@teste.com")))
+                .andExpect(jsonPath("$.conteudo[0].quantidadeFotos").value(2));
+        mockMvc.perform(get("/api/solicitacoes/{id}/fotos", id).header("Authorization", token("eletricista@teste.com")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].ordem").value(1))
+                .andExpect(jsonPath("$[0].imagem").value(foto));
+        // prestador de outra categoria nao ve as fotos
+        mockMvc.perform(get("/api/solicitacoes/{id}/fotos", id).header("Authorization", token("encanador@teste.com")))
+                .andExpect(status().isForbidden());
+
+        // editar sem mandar "fotos" mantem as fotos; lista vazia remove
+        mockMvc.perform(put("/api/solicitacoes/{id}", id).header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"descricao\":\"A tomada da sala esta soltando faiscas e cheira a queimado\"}"))
+                .andExpect(jsonPath("$.quantidadeFotos").value(2))
+                .andExpect(jsonPath("$.observacao").doesNotExist());
+        mockMvc.perform(put("/api/solicitacoes/{id}", id).header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"descricao\":\"A tomada da sala esta soltando faiscas\",\"fotos\":[]}"))
+                .andExpect(jsonPath("$.quantidadeFotos").value(0));
+    }
+
+    @Test
+    void fotosForaDoFormatoOuAcimaDoLimiteSaoRecusadas() throws Exception {
+        String cliente = token("cliente@teste.com");
+        String foto = "\"data:image/png;base64,iVBORw0KGgo=\"";
+        mockMvc.perform(post("/api/solicitacoes").header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"descricao\":\"A tomada da sala parou de funcionar\",\"fotos\":["
+                                + String.join(",", foto, foto, foto, foto) + "]}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/solicitacoes").header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"descricao\":\"A tomada da sala parou de funcionar\",\"fotos\":[\"http://site.com/a.jpg\"]}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void observacaoTambemEntraNaAnaliseDaTriagem() throws Exception {
+        when(chatModel.call(any(Prompt.class))).thenThrow(new RuntimeException("Ollama fora do ar"));
+        mockMvc.perform(post("/api/solicitacoes/triagem").header("Authorization", token("cliente@teste.com"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"descricao\":\"Preciso de ajuda na cozinha hoje\","
+                                + "\"observacao\":\"O cano da pia estourou e esta vazando\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.categoria.nome").value("Encanamento"));
+    }
+
     private void responderModelo(String json) {
         ChatResponse resposta = new ChatResponse(List.of(new Generation(new AssistantMessage(json))));
         when(chatModel.call(any(Prompt.class))).thenReturn(resposta);

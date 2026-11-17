@@ -35,6 +35,14 @@ public class Solicitacao {
     @Column(length = 300)
     private String endereco;
 
+    /** Informacao adicional opcional do morador. */
+    @Column(length = 500)
+    private String observacao;
+
+    /** Quantas fotos o pedido tem (as imagens vem em GET /api/solicitacoes/{id}/fotos). */
+    @org.hibernate.annotations.Formula("(select count(*) from solicitacao_fotos f where f.solicitacao_id = id)")
+    private int quantidadeFotos;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private Urgencia urgencia;
@@ -107,6 +115,14 @@ public class Solicitacao {
     public void setBairro(String bairro) { this.bairro = bairro; }
     public String getEndereco() { return endereco; }
     public void setEndereco(String endereco) { this.endereco = endereco; }
+    public String getObservacao() { return observacao; }
+    public void setObservacao(String observacao) { this.observacao = observacao; }
+    public int getQuantidadeFotos() { return quantidadeFotos; }
+    public void setQuantidadeFotos(int quantidadeFotos) { this.quantidadeFotos = quantidadeFotos; }
+    /** Texto analisado pela IA: descricao + observacao (quando houver). */
+    public String textoParaTriagem() {
+        return observacao == null ? descricao : descricao + "\nInformacao adicional: " + observacao;
+    }
     public Urgencia getUrgencia() { return urgencia; }
     public BigDecimal getPrecoMinimo() { return precoMinimo; }
     public BigDecimal getPrecoMaximo() { return precoMaximo; }

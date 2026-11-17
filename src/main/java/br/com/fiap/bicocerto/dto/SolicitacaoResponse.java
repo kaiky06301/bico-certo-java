@@ -10,6 +10,8 @@ public record SolicitacaoResponse(
         String descricao,
         String bairro,
         String endereco,
+        String observacao,
+        int quantidadeFotos,
         StatusSolicitacao status,
         Urgencia urgencia,
         TriagemResponse.CategoriaResumo categoria,
@@ -49,7 +51,8 @@ public record SolicitacaoResponse(
                     contatoLiberado ? p.getUsuario().getTelefone() : null, p.getNotaMedia());
         }
         String endereco = dono || contatoLiberado ? s.getEndereco() : null;
-        return new SolicitacaoResponse(s.getId(), s.getDescricao(), s.getBairro(), endereco, s.getStatus(), s.getUrgencia(),
+        return new SolicitacaoResponse(s.getId(), s.getDescricao(), s.getBairro(), endereco,
+                s.getObservacao(), s.getQuantidadeFotos(), s.getStatus(), s.getUrgencia(),
                 new TriagemResponse.CategoriaResumo(s.getCategoria().getId(), s.getCategoria().getNome()),
                 s.getPrecoMinimo(), s.getPrecoMaximo(), s.getResumoTriagem(), s.getDicaSeguranca(),
                 s.getOrigemTriagem(), cliente, prestador, s.getCriadaEm(), s.getAtualizadaEm());

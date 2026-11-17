@@ -1,5 +1,6 @@
 package br.com.fiap.bicocerto.service;
 
+import br.com.fiap.bicocerto.dto.FotoResponse;
 import br.com.fiap.bicocerto.dto.SolicitacaoRequest;
 import br.com.fiap.bicocerto.dto.SolicitacaoResponse;
 import br.com.fiap.bicocerto.dto.TriagemResponse;
@@ -11,6 +12,7 @@ import br.com.fiap.bicocerto.messaging.SolicitacaoEventoProducer;
 import br.com.fiap.bicocerto.messaging.TipoEvento;
 import br.com.fiap.bicocerto.model.*;
 import br.com.fiap.bicocerto.repository.PrestadorRepository;
+import br.com.fiap.bicocerto.repository.SolicitacaoFotoRepository;
 import br.com.fiap.bicocerto.repository.SolicitacaoRepository;
 import br.com.fiap.bicocerto.repository.UsuarioRepository;
 import br.com.fiap.bicocerto.security.UsuarioAutenticado;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.EnumSet;
+import java.util.List;
 
 @Service
 public class SolicitacaoService {
@@ -31,10 +34,13 @@ public class SolicitacaoService {
     private final TriagemService triagemService;
     private final SolicitacaoEventoProducer eventoProducer;
     private final EnderecoService enderecoService;
+    private final SolicitacaoFotoRepository fotoRepository;
 
     public SolicitacaoService(SolicitacaoRepository solicitacaoRepository, UsuarioRepository usuarioRepository,
                               PrestadorRepository prestadorRepository, TriagemService triagemService,
-                              SolicitacaoEventoProducer eventoProducer, EnderecoService enderecoService) {
+                              SolicitacaoEventoProducer eventoProducer, EnderecoService enderecoService,
+                              SolicitacaoFotoRepository fotoRepository) {
+        this.fotoRepository = fotoRepository;
         this.enderecoService = enderecoService;
         this.solicitacaoRepository = solicitacaoRepository;
         this.usuarioRepository = usuarioRepository;
@@ -44,8 +50,10 @@ public class SolicitacaoService {
     }
 
     /** Previa da triagem: o cliente ve categoria, urgencia e preco justo antes de confirmar o pedido. */
-    public TriagemResponse simularTriagem(String descricao) {
-        ResultadoTriagem resultado = triagemService.triar(descricao.trim());
+    public TriagemResponse simularTriagem(String descricao, String observacao) {
+        String obs = vazioParaNulo(observacao);
+        String texto = obs == null ? descricao.trim() : descricao.trim() + "\nInformacao adicional: " + obs;
+        ResultadoTriagem resultado = triagemService.triar(texto);
         long prestadores = prestadorRepository.findByCategoriaId(resultado.categoria().getId()).size();
         return TriagemResponse.from(resultado, prestadores);
     }
@@ -57,9 +65,13 @@ public class SolicitacaoService {
         String bairro = request.bairro() == null || request.bairro().isBlank() ? cliente.getBairro() : request.bairro().trim();
 
         Solicitacao solicitacao = new Solicitacao(cliente, request.descricao().trim(), bairro);
+        solicitacao.setObservacao(vazioParaNulo(request.observacao()));
         aplicarEndereco(solicitacao, clienteId, request.enderecoId());
         aplicarTriagem(solicitacao);
         solicitacao = solicitacaoRepository.save(solicitacao);
+        if (request.fotos() != null) {
+            salvarFotos(solicitacao, request.fotos());
+        }
 
         eventoProducer.publicarAposCommit(evento(TipoEvento.CRIADA, solicitacao));
         return SolicitacaoResponse.paraDono(solicitacao);
@@ -104,12 +116,34 @@ public class SolicitacaoService {
             throw new RegraNegocioException("So e possivel editar pedidos com status ABERTA");
         }
         solicitacao.setDescricao(request.descricao().trim());
+        solicitacao.setObservacao(vazioParaNulo(request.observacao()));
+        if (request.fotos() != null) {
+            fotoRepository.apagarDoPedido(solicitacao.getId());
+            salvarFotos(solicitacao, request.fotos());
+        }
         if (request.bairro() != null && !request.bairro().isBlank()) {
             solicitacao.setBairro(request.bairro().trim());
         }
         aplicarEndereco(solicitacao, clienteId, request.enderecoId());
         aplicarTriagem(solicitacao);
         return SolicitacaoResponse.paraDono(solicitacao);
+    }
+
+    /** Fotos do problema; quem pode ver o pedido pode ver as fotos. */
+    public List<FotoResponse> fotos(Long id, UsuarioAutenticado usuario) {
+        verificarLeitura(obter(id), usuario);
+        return fotoRepository.findBySolicitacaoIdOrderByOrdemAsc(id).stream().map(FotoResponse::from).toList();
+    }
+
+    private void salvarFotos(Solicitacao solicitacao, List<String> fotos) {
+        for (int i = 0; i < fotos.size(); i++) {
+            fotoRepository.save(new SolicitacaoFoto(solicitacao, i + 1, fotos.get(i).replaceAll("\\s", "")));
+        }
+        solicitacao.setQuantidadeFotos(fotos.size());
+    }
+
+    private static String vazioParaNulo(String valor) {
+        return valor == null || valor.isBlank() ? null : valor.trim();
     }
 
     /** Endereco escolhido em "Meus enderecos": define bairro e rua (o pedido guarda o texto, nao o id). */
@@ -229,7 +263,7 @@ public class SolicitacaoService {
     }
 
     private void aplicarTriagem(Solicitacao solicitacao) {
-        ResultadoTriagem t = triagemService.triar(solicitacao.getDescricao());
+        ResultadoTriagem t = triagemService.triar(solicitacao.textoParaTriagem());
         solicitacao.aplicarTriagem(t.categoria(), t.urgencia(), t.precoMinimo(), t.precoMaximo(), t.resumo(),
                 t.dicaSeguranca(), t.origem());
     }
