@@ -160,7 +160,7 @@ public class TriagemService {
             urgencia = Urgencia.MEDIA;
         }
 
-        String servico = "Servico de " + cat.getNome().toLowerCase(Locale.ROOT);
+        String servico = "Serviço de " + cat.getNome().toLowerCase(Locale.ROOT);
         String resumo = corrigida ? servico : textoOuPadrao(ia.resumo(), servico);
         String dica = corrigida ? dicaPadrao(cat, urgencia) : textoOuPadrao(ia.dicaSeguranca(), dicaPadrao(cat, urgencia));
         return Optional.of(new ResultadoTriagem(cat, urgencia, minimo, maximo, resumo, dica, OrigemTriagem.IA));
@@ -171,7 +171,7 @@ public class TriagemService {
         Categoria melhor = melhorCategoria(pontuarCategorias(descricao, categorias), categorias);
         Urgencia urgencia = temSinalDeRisco(descricao) ? Urgencia.ALTA : Urgencia.MEDIA;
         return new ResultadoTriagem(melhor, urgencia, melhor.getPrecoMinimo(), melhor.getPrecoMaximo(),
-                "Servico de " + melhor.getNome().toLowerCase(Locale.ROOT) + " (triagem automatica por regras)",
+                "Serviço de " + melhor.getNome().toLowerCase(Locale.ROOT) + " (triagem automática por regras)",
                 dicaPadrao(melhor, urgencia), OrigemTriagem.REGRAS);
     }
 
@@ -219,13 +219,13 @@ public class TriagemService {
     private static String dicaPadrao(Categoria categoria, Urgencia urgencia) {
         String nome = semAcento(categoria.getNome());
         if (nome.equals("eletrica")) {
-            return "Desligue o disjuntor do comodo e nao toque em fios ate o eletricista chegar.";
+            return "Desligue o disjuntor do cômodo e não toque em fios até o eletricista chegar.";
         }
         if (nome.equals("encanamento")) {
-            return "Feche o registro de agua para evitar desperdicio e danos ate o encanador chegar.";
+            return "Feche o registro de água para evitar desperdício e danos até o encanador chegar.";
         }
         return urgencia == Urgencia.ALTA
-                ? "Afaste as pessoas do local do problema ate o prestador chegar."
+                ? "Afaste as pessoas do local do problema até o prestador chegar."
                 : "Deixe o local livre e separe fotos do problema para mostrar ao prestador.";
     }
 

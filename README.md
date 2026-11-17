@@ -504,9 +504,29 @@ Acesse o Swagger em **http://localhost:8080/swagger-ui.html**: faça login em `P
 |---|---|
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Conexão com o PostgreSQL |
 | `JWT_SECRET`, `JWT_EXPIRATION_MS` | Assinatura e validade do token |
-| `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` | Broker de mensagens |
+| `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST`, `RABBITMQ_SSL` | Broker de mensagens (na nuvem: CloudAMQP com `RABBITMQ_SSL=true` e porta 5671) |
 | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` | Modelo de IA local |
 | `SEED_PASSWORD` | Senha dos usuários de teste criados na primeira execução |
+
+
+### Com Docker (mesma imagem usada na nuvem)
+
+```bash
+docker build -t bicocerto-api .
+docker run -p 8080:8080 --env-file .env bicocerto-api
+```
+A imagem roda com usuário sem privilégios e cabe em 512 MB de memória. Se o Ollama não estiver acessível (como na nuvem), a triagem continua funcionando **por regras** (`"origem": "REGRAS"`), com a mesma faixa de preço de referência.
+
+### Na nuvem (Render + CloudAMQP, planos gratuitos)
+
+1. **Banco:** crie um PostgreSQL no Render e copie o host interno, o banco, o usuário e a senha.
+2. **RabbitMQ:** crie uma instância gratuita no CloudAMQP e copie o host, o usuário (que também é o *vhost*) e a senha.
+3. **API:** no Render, crie um *Web Service* a partir deste repositório (runtime **Docker**) com as variáveis:
+   `DB_URL=jdbc:postgresql://<host>:5432/<banco>`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `SEED_PASSWORD`,
+   `RABBITMQ_HOST`, `RABBITMQ_PORT=5671`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST`, `RABBITMQ_SSL=true`.
+4. O Flyway cria as tabelas e os usuários de teste são criados na primeira subida.
+
+> No plano gratuito do Render o serviço "dorme" após 15 minutos sem uso e a primeira requisição depois disso demora cerca de 1 minuto.
 
 ---
 

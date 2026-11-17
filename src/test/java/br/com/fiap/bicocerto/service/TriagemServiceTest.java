@@ -64,7 +64,7 @@ class TriagemServiceTest {
                 "A pia da cozinha entupiu e a agua nao desce").orElseThrow();
 
         assertThat(resultado.categoria()).isSameAs(encanamento);
-        assertThat(resultado.resumo()).isEqualTo("Servico de encanamento");
+        assertThat(resultado.resumo()).isEqualTo("Serviço de encanamento");
     }
 
     @Test
