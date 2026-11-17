@@ -26,6 +26,18 @@ public class Notificacao {
     @Column(nullable = false)
     private boolean lida;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private TipoAviso tipo = TipoAviso.PEDIDO;
+
+    /** Valor citado no aviso (orcamento, contraproposta, contratacao). */
+    @Column(precision = 10, scale = 2)
+    private java.math.BigDecimal valor;
+
+    /** Orcamento do modulo .NET ligado ao aviso (o app abre direto a proposta). */
+    @Column(name = "orcamento_id")
+    private Long orcamentoId;
+
     @Column(name = "criada_em", nullable = false)
     private LocalDateTime criadaEm;
 
@@ -33,9 +45,17 @@ public class Notificacao {
     }
 
     public Notificacao(Usuario usuario, Solicitacao solicitacao, String mensagem) {
+        this(usuario, solicitacao, TipoAviso.PEDIDO, mensagem, null, null);
+    }
+
+    public Notificacao(Usuario usuario, Solicitacao solicitacao, TipoAviso tipo, String mensagem,
+                       java.math.BigDecimal valor, Long orcamentoId) {
         this.usuario = usuario;
         this.solicitacao = solicitacao;
+        this.tipo = tipo;
         this.mensagem = mensagem;
+        this.valor = valor;
+        this.orcamentoId = orcamentoId;
     }
 
     @PrePersist
@@ -50,4 +70,7 @@ public class Notificacao {
     public boolean isLida() { return lida; }
     public void marcarComoLida() { this.lida = true; }
     public LocalDateTime getCriadaEm() { return criadaEm; }
+    public TipoAviso getTipo() { return tipo; }
+    public java.math.BigDecimal getValor() { return valor; }
+    public Long getOrcamentoId() { return orcamentoId; }
 }

@@ -28,8 +28,11 @@ public class SolicitacaoController {
 
     private final SolicitacaoService solicitacaoService;
     private final AvaliacaoService avaliacaoService;
+    private final br.com.fiap.bicocerto.service.NotificacaoService notificacaoService;
 
-    public SolicitacaoController(SolicitacaoService solicitacaoService, AvaliacaoService avaliacaoService) {
+    public SolicitacaoController(SolicitacaoService solicitacaoService, AvaliacaoService avaliacaoService,
+                                 br.com.fiap.bicocerto.service.NotificacaoService notificacaoService) {
+        this.notificacaoService = notificacaoService;
         this.solicitacaoService = solicitacaoService;
         this.avaliacaoService = avaliacaoService;
     }
@@ -120,6 +123,15 @@ public class SolicitacaoController {
     public SolicitacaoResponse registrarContratacao(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado usuario,
                                                     @RequestBody @Valid ContratacaoRegistroRequest request) {
         return solicitacaoService.registrarContratacao(id, usuario.getId(), request.prestadorUsuarioId());
+    }
+
+    @PostMapping("/{id}/avisos")
+    @Operation(summary = "Modulo .NET registra um aviso para a outra parte do pedido (orcamento, negociacao, contratacao...)")
+    public ResponseEntity<NotificacaoResponse> avisar(@PathVariable Long id,
+                                                      @AuthenticationPrincipal UsuarioAutenticado usuario,
+                                                      @RequestBody @Valid AvisoRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(notificacaoService.registrarAviso(id, usuario.getId(), request));
     }
 
     @PatchMapping("/{id}/assumir")

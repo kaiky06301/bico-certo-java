@@ -29,16 +29,37 @@ public class NotificacaoController {
     }
 
     @GetMapping
-    @Operation(summary = "Notificacoes do usuario logado")
+    @Operation(summary = "Notificacoes do usuario logado (filtro opcional: lida=true/false)")
     public PaginaResponse<NotificacaoResponse> listar(@AuthenticationPrincipal UsuarioAutenticado usuario,
+            @RequestParam(required = false) Boolean lida,
             @ParameterObject @PageableDefault(size = 20, sort = "criadaEm", direction = Sort.Direction.DESC) Pageable pageable) {
-        return PaginaResponse.from(notificacaoService.listar(usuario.getId(), pageable));
+        return PaginaResponse.from(notificacaoService.listar(usuario.getId(), lida, pageable));
     }
 
     @GetMapping("/nao-lidas")
     @Operation(summary = "Quantidade de notificacoes nao lidas (badge do app)")
     public Map<String, Long> naoLidas(@AuthenticationPrincipal UsuarioAutenticado usuario) {
         return Map.of("naoLidas", notificacaoService.naoLidas(usuario.getId()));
+    }
+
+    @PatchMapping("/lidas")
+    @Operation(summary = "Marca todas as notificacoes como lidas")
+    public Map<String, Integer> marcarTodas(@AuthenticationPrincipal UsuarioAutenticado usuario) {
+        return Map.of("atualizadas", notificacaoService.marcarTodasComoLidas(usuario.getId()));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Exclui uma notificacao")
+    public org.springframework.http.ResponseEntity<Void> excluir(@PathVariable Long id,
+                                                                 @AuthenticationPrincipal UsuarioAutenticado usuario) {
+        notificacaoService.excluir(id, usuario.getId());
+        return org.springframework.http.ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/lidas")
+    @Operation(summary = "Limpa as notificacoes ja lidas")
+    public Map<String, Integer> limparLidas(@AuthenticationPrincipal UsuarioAutenticado usuario) {
+        return Map.of("removidas", notificacaoService.limparLidas(usuario.getId()));
     }
 
     @PatchMapping("/{id}/lida")

@@ -298,7 +298,7 @@ erDiagram
     }
 ```
 
-As migrations ficam em `src/main/resources/db/migration`: a `V1__Create_tables.sql` cria as tabelas e a `V2__Insert_categorias.sql` carrega a **tabela de referência de preços**. A `V3__Perfil_e_conta.sql` acrescenta o perfil profissional e a exclusão de conta, a `V4__Enderecos.sql` cria os endereços salvos a `V5__Fotos_e_observacao.sql` acrescenta a informação adicional e as fotos do problema, e a `V6__Cancelamento_e_acentos.sql` guarda o motivo do cancelamento e acentua os dados de exemplo.
+As migrations ficam em `src/main/resources/db/migration`: a `V1__Create_tables.sql` cria as tabelas e a `V2__Insert_categorias.sql` carrega a **tabela de referência de preços**. A `V3__Perfil_e_conta.sql` acrescenta o perfil profissional e a exclusão de conta, a `V4__Enderecos.sql` cria os endereços salvos a `V5__Fotos_e_observacao.sql` acrescenta a informação adicional e as fotos do problema, a `V6__Cancelamento_e_acentos.sql` guarda o motivo do cancelamento e acentua os dados de exemplo, a `V7__Tipos_de_aviso.sql` dá tipo, valor e orçamento aos avisos e a `V8__Acentos_dos_avisos.sql` corrige o texto dos avisos antigos.
 
 ---
 
@@ -503,8 +503,12 @@ Todos usam `Authorization: Bearer <token>`, exceto login e cadastro. As listagen
 | PUT | `/api/conta/senha` | logado | Troca a senha (exige a atual) |
 | GET | `/api/conta/avaliacoes` | logado | Avaliações que o cliente fez |
 | DELETE | `/api/conta` | logado | Exclui a conta (pede a senha e anonimiza os dados) |
-| GET | `/api/notificacoes` | logado | Notificações (geradas pelo consumer) |
+| GET | `/api/notificacoes?lida=` | logado | Avisos com **tipo** (pedido, orçamento, negociação, contratação, agendamento, serviço, conclusão, cancelamento), título, valor e orçamento ligado; filtro opcional por lida |
 | PATCH | `/api/notificacoes/{id}/lida` | logado | Marca como lida |
+| PATCH | `/api/notificacoes/lidas` | logado | Marca todas como lidas |
+| DELETE | `/api/notificacoes/{id}` | dono do aviso | Exclui um aviso |
+| DELETE | `/api/notificacoes/lidas` | logado | Limpa os avisos já lidos |
+| POST | `/api/solicitacoes/{id}/avisos` | cliente ou prestador do pedido | Usado pelo módulo .NET: grava o aviso para a outra parte (orçamento, contraproposta, contratação...). Quem envia e quem recebe precisam participar do pedido |
 | GET | `/api/usuarios` | ADMIN | Lista usuários |
 
 ### Formato padrão de erro (`@RestControllerAdvice`)
@@ -549,7 +553,7 @@ curl -X PATCH http://localhost:8080/api/solicitacoes/1/assumir -H "Authorization
 
 ## 11. Testes (JUnit + Postman)
 
-### Automatizados (JUnit 5, 29 testes)
+### Automatizados (JUnit 5, 30 testes)
 
 ```bash
 ./mvnw test
@@ -561,7 +565,7 @@ Os testes rodam em **H2**, com as **mesmas migrations do Flyway**. O modelo de I
 | `TriagemServiceTest` (9) | Normalização da resposta da IA, guardrails de categoria e urgência, cálculo do preço justo e triagem por regras |
 | `PrestadorTest` (1) | Cálculo da nota média |
 | `ContaIntegracaoTest` (6) | Endereços (principal automático, troca de principal, validação, endereço de outro usuário 404, exclusão promovendo o próximo), pedido em outro endereço com a rua escondida do prestador até a contratação, ver e editar os próprios dados (400 na validação), troca de senha exigindo a atual, exclusão com senha que bloqueia login e token antigo, perfil profissional e perfil público pelo id do usuário, selo de verificado só pelo ADMIN |
-| `FluxoSolicitacaoIntegracaoTest` (13) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade, IA fora do ar, fotos e observação (quem pode ver, limite de 3, formato inválido, editar mantendo ou removendo fotos) observação usada na triagem e motivo do cancelamento (400 acima de 200 caracteres) |
+| `FluxoSolicitacaoIntegracaoTest` (14) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade, IA fora do ar, fotos e observação (quem pode ver, limite de 3, formato inválido, editar mantendo ou removendo fotos) observação usada na triagem motivo do cancelamento (400 acima de 200 caracteres) e avisos vindos do .NET (403 para quem não participa do pedido, 422 para destinatário de fora, filtro por lida, marcar todas, excluir e limpar lidas) |
 
 ### Postman
 

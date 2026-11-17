@@ -302,6 +302,60 @@ class FluxoSolicitacaoIntegracaoTest {
                 .andExpect(jsonPath("$.motivoCancelamento").value("Resolvi de outra forma"));
     }
 
+    @Test
+    void avisosDoModuloNetComTipoFiltroEGerenciamento() throws Exception {
+        String cliente = token("cliente@teste.com");
+        String eletricista = token("eletricista@teste.com");
+        long clienteId = usuarioRepository.findByEmailIgnoreCase("cliente@teste.com").orElseThrow().getId();
+        long joaoId = usuarioRepository.findByEmailIgnoreCase("eletricista@teste.com").orElseThrow().getId();
+        String resposta = mockMvc.perform(post("/api/solicitacoes").header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"descricao\":\"A tomada da sala parou de funcionar\"}"))
+                .andReturn().getResponse().getContentAsString();
+        long id = jsonMapper.readTree(resposta).get("id").asLong();
+        String aviso = "{\"tipo\":\"ORCAMENTO\",\"destinatarioId\":" + clienteId
+                + ",\"mensagem\":\"Joao enviou um orcamento de R$ 120,00\",\"valor\":120,\"orcamentoId\":7}";
+
+        // prestador de outra categoria nao participa do pedido
+        mockMvc.perform(post("/api/solicitacoes/{id}/avisos", id).header("Authorization", token("encanador@teste.com"))
+                        .contentType(MediaType.APPLICATION_JSON).content(aviso))
+                .andExpect(status().isForbidden());
+        // aviso para quem nao participa e recusado
+        mockMvc.perform(post("/api/solicitacoes/{id}/avisos", id).header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tipo\":\"NEGOCIACAO\",\"destinatarioId\":" + clienteId + ",\"mensagem\":\"x\"}"))
+                .andExpect(status().isUnprocessableContent());
+
+        mockMvc.perform(post("/api/solicitacoes/{id}/avisos", id).header("Authorization", eletricista)
+                        .contentType(MediaType.APPLICATION_JSON).content(aviso))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tipo").value("ORCAMENTO"))
+                .andExpect(jsonPath("$.titulo").value("Orçamento"))
+                .andExpect(jsonPath("$.orcamentoId").value(7));
+        mockMvc.perform(post("/api/solicitacoes/{id}/avisos", id).header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tipo\":\"NEGOCIACAO\",\"destinatarioId\":" + joaoId
+                                + ",\"mensagem\":\"Maria propos R$ 100,00\",\"valor\":100}"))
+                .andExpect(status().isCreated());
+
+        // filtro, marcar todas, limpar lidas e excluir
+        String lista = mockMvc.perform(get("/api/notificacoes?lida=false").header("Authorization", cliente))
+                .andExpect(jsonPath("$.conteudo.length()").value(1))
+                .andExpect(jsonPath("$.conteudo[0].valor").value(120.0))
+                .andReturn().getResponse().getContentAsString();
+        long avisoId = jsonMapper.readTree(lista).get("conteudo").get(0).get("id").asLong();
+        mockMvc.perform(delete("/api/notificacoes/{id}", avisoId).header("Authorization", eletricista))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(patch("/api/notificacoes/lidas").header("Authorization", cliente))
+                .andExpect(jsonPath("$.atualizadas").value(1));
+        mockMvc.perform(get("/api/notificacoes/nao-lidas").header("Authorization", cliente))
+                .andExpect(jsonPath("$.naoLidas").value(0));
+        mockMvc.perform(delete("/api/notificacoes/lidas").header("Authorization", cliente))
+                .andExpect(jsonPath("$.removidas").value(1));
+        mockMvc.perform(get("/api/notificacoes").header("Authorization", eletricista))
+                .andExpect(jsonPath("$.conteudo[?(@.tipo == 'NEGOCIACAO')]").exists());
+    }
+
     private void responderModelo(String json) {
         ChatResponse resposta = new ChatResponse(List.of(new Generation(new AssistantMessage(json))));
         when(chatModel.call(any(Prompt.class))).thenReturn(resposta);
