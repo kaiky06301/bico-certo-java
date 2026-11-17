@@ -357,6 +357,29 @@ class FluxoSolicitacaoIntegracaoTest {
                 .andExpect(jsonPath("$.conteudo[?(@.tipo == 'NEGOCIACAO')]").exists());
     }
 
+    @Test
+    void prestadorContratadoDesisteEOPedidoVoltaAFicarAberto() throws Exception {
+        String cliente = token("cliente@teste.com");
+        String eletricista = token("eletricista@teste.com");
+        String resposta = mockMvc.perform(post("/api/solicitacoes").header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"descricao\":\"A tomada da sala parou de funcionar\"}"))
+                .andReturn().getResponse().getContentAsString();
+        long id = jsonMapper.readTree(resposta).get("id").asLong();
+        long joaoId = usuarioRepository.findByEmailIgnoreCase("eletricista@teste.com").orElseThrow().getId();
+        mockMvc.perform(patch("/api/solicitacoes/{id}/contratacao", id).header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"prestadorUsuarioId\":" + joaoId + "}"))
+                .andExpect(jsonPath("$.status").value("EM_ATENDIMENTO"));
+
+        mockMvc.perform(patch("/api/solicitacoes/{id}/desistencia", id).header("Authorization", token("encanador@teste.com")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(patch("/api/solicitacoes/{id}/desistencia", id).header("Authorization", eletricista))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ABERTA"))
+                .andExpect(jsonPath("$.prestador").doesNotExist())
+                .andExpect(jsonPath("$.cliente.telefone").doesNotExist());
+    }
+
     private void responderModelo(String json) {
         ChatResponse resposta = new ChatResponse(List.of(new Generation(new AssistantMessage(json))));
         when(chatModel.call(any(Prompt.class))).thenReturn(resposta);

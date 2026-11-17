@@ -213,6 +213,26 @@ public class SolicitacaoService {
         return SolicitacaoResponse.paraDono(solicitacao);
     }
 
+    /**
+     * O prestador contratado desiste antes de concluir: o pedido volta a ficar ABERTO para o cliente escolher
+     * outro orcamento, e a rua e o telefone deixam de aparecer para ele.
+     */
+    @Transactional
+    public SolicitacaoResponse desistir(Long id, Long usuarioId) {
+        Prestador prestador = prestadorDoUsuario(usuarioId);
+        Solicitacao solicitacao = solicitacaoRepository.buscarParaAtualizar(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao " + id + " nao encontrada"));
+        if (solicitacao.getPrestador() == null || !solicitacao.getPrestador().getId().equals(prestador.getId())) {
+            throw new AcessoNegadoException("So o prestador contratado pode desistir do servico");
+        }
+        if (solicitacao.getStatus() != StatusSolicitacao.EM_ATENDIMENTO) {
+            throw new RegraNegocioException("So e possivel desistir de servicos em atendimento");
+        }
+        solicitacao.setPrestador(null);
+        solicitacao.setStatus(StatusSolicitacao.ABERTA);
+        return SolicitacaoResponse.from(solicitacao);
+    }
+
     @Transactional
     public SolicitacaoResponse concluir(Long id, Long usuarioId) {
         Prestador prestador = prestadorDoUsuario(usuarioId);

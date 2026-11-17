@@ -141,6 +141,13 @@ public class SolicitacaoController {
         return solicitacaoService.assumir(id, usuario.getId());
     }
 
+    @PatchMapping("/{id}/desistencia")
+    @PreAuthorize("hasRole('PRESTADOR')")
+    @Operation(summary = "Prestador contratado desiste: o pedido volta a ABERTA para o cliente escolher outro orcamento")
+    public SolicitacaoResponse desistir(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado usuario) {
+        return solicitacaoService.desistir(id, usuario.getId());
+    }
+
     @PatchMapping("/{id}/concluir")
     @PreAuthorize("hasRole('PRESTADOR')")
     @Operation(summary = "Prestador marca o servico como concluido")

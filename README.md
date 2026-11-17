@@ -500,6 +500,7 @@ Todos usam `Authorization: Bearer <token>`, exceto login e cadastro. As listagen
 | GET / POST | `/api/conta/enderecos` | logado | Lista e salva endereços (o primeiro vira principal; máximo de 10) |
 | PUT / DELETE | `/api/conta/enderecos/{id}` | dono | Edita ou exclui (excluir o principal promove o próximo) |
 | PATCH | `/api/conta/enderecos/{id}/principal` | dono | Marca como principal |
+| PATCH | `/api/solicitacoes/{id}/desistencia` | PRESTADOR contratado | Desiste do serviço: o pedido volta a ABERTA, sem prestador, e a rua e o telefone voltam a ficar escondidos |
 | PATCH | `/api/solicitacoes/{id}/contratacao` | CLIENTE dono | Registra o prestador do orçamento aceito no módulo .NET e libera rua e telefone para ele |
 | PUT | `/api/conta/senha` | logado | Troca a senha (exige a atual) |
 | GET | `/api/conta/avaliacoes` | logado | Avaliações que o cliente fez |
@@ -554,7 +555,7 @@ curl -X PATCH http://localhost:8080/api/solicitacoes/1/assumir -H "Authorization
 
 ## 11. Testes (JUnit + Postman)
 
-### Automatizados (JUnit 5, 30 testes)
+### Automatizados (JUnit 5, 31 testes)
 
 ```bash
 ./mvnw test
@@ -566,7 +567,7 @@ Os testes rodam em **H2**, com as **mesmas migrations do Flyway**. O modelo de I
 | `TriagemServiceTest` (9) | Normalização da resposta da IA, guardrails de categoria e urgência, cálculo do preço justo e triagem por regras |
 | `PrestadorTest` (1) | Cálculo da nota média |
 | `ContaIntegracaoTest` (6) | Endereços (principal automático, troca de principal, validação, endereço de outro usuário 404, exclusão promovendo o próximo), pedido em outro endereço com a rua escondida do prestador até a contratação, ver e editar os próprios dados (400 na validação), troca de senha exigindo a atual, exclusão com senha que bloqueia login e token antigo, perfil profissional e perfil público pelo id do usuário, selo de verificado só pelo ADMIN |
-| `FluxoSolicitacaoIntegracaoTest` (14) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade, IA fora do ar, fotos e observação (quem pode ver, limite de 3, formato inválido, editar mantendo ou removendo fotos) observação usada na triagem motivo do cancelamento (400 acima de 200 caracteres) e avisos vindos do .NET (403 para quem não participa do pedido, 422 para destinatário de fora, filtro por lida, marcar todas, excluir e limpar lidas) |
+| `FluxoSolicitacaoIntegracaoTest` (15) | Login 401, rota sem token, 403 por papel, validação 400, paginação, fluxo completo (criar → evento RabbitMQ → assumir → concluir → avaliar), privacidade, IA fora do ar, fotos e observação (quem pode ver, limite de 3, formato inválido, editar mantendo ou removendo fotos) observação usada na triagem motivo do cancelamento (400 acima de 200 caracteres) e avisos vindos do .NET (403 para quem não participa do pedido, 422 para destinatário de fora, filtro por lida, marcar todas, excluir e limpar lidas) |
 
 ### Postman
 
