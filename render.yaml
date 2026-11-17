@@ -1,4 +1,4 @@
-# Blueprint do Render: API + PostgreSQL nos planos gratuitos.
+# Blueprint do Render: API Java + modulo .NET + PostgreSQL, tudo nos planos gratuitos.
 # No dashboard: New > Blueprint > escolha este repositório.
 services:
   - type: web
@@ -26,6 +26,36 @@ services:
         value: senha123
       # RabbitMQ (CloudAMQP): acrescente depois RABBITMQ_HOST, RABBITMQ_PORT=5671,
       # RABBITMQ_USERNAME, RABBITMQ_PASSWORD, RABBITMQ_VHOST e RABBITMQ_SSL=true
+
+  # Modulo .NET (orcamentos e contratacao): outro repositorio, mesmo banco (schema "net") e mesmo JWT da API Java
+  - type: web
+    name: bico-certo-dotnet
+    runtime: docker
+    repo: https://github.com/kaiky06301/bico-certo-dotnet
+    branch: main
+    plan: free
+    region: virginia
+    dockerfilePath: ./dockerfiles/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: Database__Provider
+        value: Postgres
+      - key: DB_HOST
+        fromDatabase: { name: bico-certo-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: bico-certo-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: bico-certo-db, property: database }
+      - key: DB_USERNAME
+        fromDatabase: { name: bico-certo-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: bico-certo-db, property: password }
+      - key: Jwt__Secret
+        fromService: { name: bico-certo-api, type: web, envVarKey: JWT_SECRET }
+      - key: JavaApi__BaseUrl
+        value: https://bico-certo-api.onrender.com
+      - key: JavaApi__TimeoutSegundos
+        value: "60"
 
 databases:
   - name: bico-certo-db
