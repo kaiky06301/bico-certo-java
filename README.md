@@ -519,12 +519,10 @@ A imagem roda com usuário sem privilégios e cabe em 512 MB de memória. Se o O
 
 ### Na nuvem (Render + CloudAMQP, planos gratuitos)
 
-1. **Banco:** crie um PostgreSQL no Render e copie o host interno, o banco, o usuário e a senha.
-2. **RabbitMQ:** crie uma instância gratuita no CloudAMQP e copie o host, o usuário (que também é o *vhost*) e a senha.
-3. **API:** no Render, crie um *Web Service* a partir deste repositório (runtime **Docker**) com as variáveis:
-   `DB_URL=jdbc:postgresql://<host>:5432/<banco>`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `SEED_PASSWORD`,
-   `RABBITMQ_HOST`, `RABBITMQ_PORT=5671`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST`, `RABBITMQ_SSL=true`.
-4. O Flyway cria as tabelas e os usuários de teste são criados na primeira subida.
+1. **API + banco:** no Render, *New › Blueprint* e escolha este repositório. O `render.yaml` cria o PostgreSQL e a API (Docker), liga o banco às variáveis `DB_*`, gera um `JWT_SECRET` aleatório e define a senha dos usuários de teste.
+2. **RabbitMQ:** crie uma instância gratuita no CloudAMQP e acrescente na API: `RABBITMQ_HOST`, `RABBITMQ_PORT=5671`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST` (igual ao usuário) e `RABBITMQ_SSL=true`. Sem o broker a API continua funcionando; só os avisos de "novo pedido" para os prestadores dependem dele.
+3. O Flyway cria as tabelas e os usuários de teste são criados na primeira subida.
+4. O módulo .NET precisa usar o **mesmo** `JWT_SECRET` (variável `Jwt__Secret`).
 
 > No plano gratuito do Render o serviço "dorme" após 15 minutos sem uso e a primeira requisição depois disso demora cerca de 1 minuto.
 

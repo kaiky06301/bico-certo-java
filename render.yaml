@@ -1,0 +1,35 @@
+# Blueprint do Render: API + PostgreSQL nos planos gratuitos.
+# No dashboard: New > Blueprint > escolha este repositório.
+services:
+  - type: web
+    name: bico-certo-api
+    runtime: docker
+    plan: free
+    region: virginia
+    healthCheckPath: /api/categorias
+    envVars:
+      - key: DB_HOST
+        fromDatabase: { name: bico-certo-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: bico-certo-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: bico-certo-db, property: database }
+      - key: DB_USERNAME
+        fromDatabase: { name: bico-certo-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: bico-certo-db, property: password }
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION_MS
+        value: "3600000"
+      - key: SEED_PASSWORD
+        value: senha123
+      # RabbitMQ (CloudAMQP): acrescente depois RABBITMQ_HOST, RABBITMQ_PORT=5671,
+      # RABBITMQ_USERNAME, RABBITMQ_PASSWORD, RABBITMQ_VHOST e RABBITMQ_SSL=true
+
+databases:
+  - name: bico-certo-db
+    plan: free
+    region: virginia
+    databaseName: bicocerto
+    user: bicocerto
