@@ -6,7 +6,7 @@
 | | |
 |---|---|
 | **Repositório** | https://github.com/kaiky06301/bico-certo-java |
-| **Vídeo pitch (até 5 min)** | `LINK_DO_VIDEO` |
+| **Vídeo pitch (até 5 min)** | https://youtu.be/r2TxtJkuNcY |
 | **App mobile (consome esta API)** | https://github.com/kaiky06301/bico-certo-mobile |
 | **Módulo .NET (orçamentos e contratação)** | https://github.com/kaiky06301/bico-certo-dotnet |
 | **Swagger (local)** | http://localhost:8080/swagger-ui.html |
